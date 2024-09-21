@@ -1,0 +1,6 @@
+[submodule "External/cinder"]
+	path = External/cinder
+	url = https://github.com/cinder/Cinder.git
+[submodule "External/TBB"]
+	path = External/TBB
+	url = https://github.com/oneapi-src/oneTBB.git
