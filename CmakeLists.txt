@@ -19,6 +19,7 @@ else()
 endif()
 
 include( ${CINDER_CMAKE_DIR}/libcinder_target.cmake )
+set(TBB_TEST OFF)
 add_subdirectory(External/TBB)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 ci_make_app(
