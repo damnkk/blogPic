@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 project(appLearn)
-set(CINDER_CMAKE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/proj/cmake)
-set(CINDER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+set(CINDER_CMAKE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/proj/cmake CACHE PATH "Path to the cinder cmake directory")
+set(CINDER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder CACHE PATH "Path to the cinder directory")
+set(CINDER_BUILD_ALL_SAMPLES OFF CACHE BOOL "Disable AntTweakBar support")
+set(TBB_TEST OFF CACHE BOOL "Disable TBB tests")
 include (${CINDER_CMAKE_DIR}/configure.cmake)
 include( ${CINDER_CMAKE_DIR}/libcinder_configure.cmake )
 include( ${CINDER_CMAKE_DIR}/libcinder_source_files.cmake )
@@ -19,15 +22,28 @@ else()
 endif()
 
 include( ${CINDER_CMAKE_DIR}/libcinder_target.cmake )
-set(TBB_TEST OFF)
 add_subdirectory(External/TBB)
-file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp )
+message(${SOURCES})
 ci_make_app(
     APP_NAME appLearn
     CINDER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder
     SOURCES ${SOURCES}
     INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include/imgui
             ${CMAKE_CURRENT_SOURCE_DIR}/External/TBB/include
             ${CMAKE_CURRENT_SOURCE_DIR}/include
-    LIBRARIES tbb tbbmalloc
+    LIBRARIES tbb tbbmalloc 
 )
+
+# if( CINDER_BUILD_ALL_SAMPLES )
+# 	include( ${CINDER_CMAKE_DIR}/modules/findCMakeDirs.cmake )
+
+# 	set( allSamples "" )
+# 	findCMakeDirs( allSamples "${CINDER_PATH}/samples" "${CINDER_SKIP_SAMPLES}" )
+
+# 	foreach( sampleDir ${allSamples} )
+# 		ci_log_v( "adding sample: ${sampleDir}" )
+# 		add_subdirectory( ${sampleDir} )
+# 	endforeach()
+# endif()

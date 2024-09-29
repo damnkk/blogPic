@@ -1,0 +1,1 @@
+#include <MyComponent.h>
