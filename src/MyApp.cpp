@@ -21,15 +21,12 @@ std::string builtIntFragShader =R"(
 out vec4 FragColor;
 in vec2 uv;
 void main(){   
-    FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);}
+    FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+}
 )";
 
 
 void MyApp::keyDown(cinder::app::KeyEvent event){
-    if(event.getCode()==cinder::app::KeyEvent::KEY_ESCAPE){
-        std::cout<<"Escape key pressed. Exiting..."<<std::endl;
-        this->quit();
-    }
 }
 
 void MyApp::draw(){
@@ -55,6 +52,23 @@ void MyApp::update(){
         }
         ImGui::EndMenu();
     }
+    if(ImGui::BeginMenu("Settings")){
+        if(ImGui::MenuItem("Full Screen")){
+            if(!this->getWindow()->isFullScreen())
+                this->getWindow()->setFullScreen(true);
+            else 
+                this->getWindow()->setFullScreen(false);
+        }
+        if(ImGui::MenuItem("Wall Paper Mode")){
+            auto window = (HWND)this->getWindow()->getNative();
+            LONG_PTR style = GetWindowLongPtr(window, GWL_EXSTYLE);
+            style |= WS_EX_LAYERED | WS_EX_TOOLWINDOW;
+            SetWindowLongPtr(window, GWL_EXSTYLE, style);
+            SetLayeredWindowAttributes(window, RGB(0, 0, 0), 255, LWA_COLORKEY);
+            SetWindowPos(window, HWND_BOTTOM, 0, 0, 800, 600, SWP_NOACTIVATE | SWP_NOZORDER);
+        }
+        ImGui::EndMenu();
+    }
     ImGui::EndMainMenuBar();
     switch (_popupState) {
         case MyApp::PopupState::NewProj:{
@@ -73,7 +87,6 @@ void MyApp::update(){
             if(!rootPaths.empty()){
                 _fileBroserWindow->setRootPaths(rootPaths);
                 _fileBroserWindow->Draw();
-                
             }
 #endif
             break;
@@ -99,8 +112,9 @@ inline bool isShaderNeedUpdate(std::string& path,std::unordered_map<std::string,
 
 void MyApp::setup(){
     ImGui::Initialize();
+    auto window = this->getWindow();
     auto io = ImGui::GetIO();
-    auto font = io.Fonts->AddFontFromFileTTF("../../asset/ttf/QingNiaoHuaGuangJianMeiHei-2.ttf", 18.0f,NULL,io.Fonts->GetGlyphRangesChineseFull());
+    auto font = io.Fonts->AddFontFromFileTTF("./asset/ttf/QingNiaoHuaGuangJianMeiHei-2.ttf", 18.0f,NULL,io.Fonts->GetGlyphRangesChineseFull());
     adjustForDPI();
     _fileBroserWindow = std::make_shared<FileBroserWindow>(this);
 }

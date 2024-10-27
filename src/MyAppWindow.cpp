@@ -44,7 +44,7 @@ bool isEmptyFile(const std::filesystem::path& path) {
 }
 
 void FileBroserWindow::Draw(){
-    ImGui::Begin("File Browser",nullptr,ImGuiWindowFlags_NoResize);
+    ImGui::Begin("File Browser",nullptr);
     ImGui:ImGui::Text("Selected Path: ");
     ImGui::SameLine();
     ImGui::Text("%s", _clickedPath.c_str());
