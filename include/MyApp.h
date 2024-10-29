@@ -10,6 +10,7 @@
 #include <cinder/Json.h>
 #include <cinder/Thread.h>
 #include <MyScene.h>
+#include <ecs/Event.h>
 
 struct MyProject;
 struct FileBroserWindow;

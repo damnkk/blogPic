@@ -114,13 +114,56 @@ inline bool isShaderNeedUpdate(std::string& path,std::unordered_map<std::string,
     }
 }
 
+struct ExplosionEvent:public ecs::BaseEvent{
+    ExplosionEvent():_explosionRadius(0.0){}
+    ExplosionEvent(float radius):_explosionRadius(radius){}
+    float _explosionRadius;
+
+};
+
+struct ExplosionSystem:public ecs::Receiver<ExplosionSystem>{
+    ExplosionSystem(){};
+    ~ExplosionSystem(){};
+
+    void receive(ecs::BaseEvent& event){
+        ExplosionEvent* explosionEvent = dynamic_cast<ExplosionEvent*>(&event);
+        if(explosionEvent){
+            std::cout<<"Boom!! a Bomb exploded with radius :"<< explosionEvent->_explosionRadius<<std::endl;
+        }
+    }
+};
+
+struct test{
+    int a;
+};
+
+struct boob:public test{
+
+};
+
+
+
 void MyApp::setup(){
     ImGui::Initialize();
     auto window = this->getWindow();
     auto io = ImGui::GetIO();
-    auto font = io.Fonts->AddFontFromFileTTF("./asset/ttf/QingNiaoHuaGuangJianMeiHei-2.ttf", 18.0f,NULL,io.Fonts->GetGlyphRangesChineseFull());
+    // auto font = io.Fonts->AddFontFromFileTTF("./asset/ttf/QingNiaoHuaGuangJianMeiHei-2.ttf", 18.0f,NULL,io.Fonts->GetGlyphRangesChineseFull());
     adjustForDPI();
     _fileBroserWindow = std::make_shared<FileBroserWindow>(this);
+
+    ecs::EventManager EVTManager;
+    ExplosionEvent explosionEvent(23.0);
+    ExplosionSystem explosionSystem;
+    EVTManager.subscribe<ExplosionEvent>(explosionSystem);
+    EVTManager.emit<ExplosionEvent>(explosionEvent);
+
+    // test<int> tt;
+    // test<float> tf;
+    // std::cout<<typeid(tt).name()<<std::endl;
+    // std::cout<<typeid(tf).name()<<std::endl;
+    // boob bb;
+    // std::cout<<typeid(bb).name()<<std::endl;
+
 }
 
 void MyApp::adjustForDPI(){

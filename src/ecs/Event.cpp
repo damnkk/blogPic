@@ -1,3 +1,2 @@
 #include <ecs/Event.h>
-
-BaseEvent::Family BaseEvent::family_counter_ = 0;
+ecs::EventTypeIDBase::TypeID ecs::EventTypeIDBase::TypeCount = 0;
