@@ -59,6 +59,7 @@ void MyApp::update(){
             else 
                 this->getWindow()->setFullScreen(false);
         }
+#if WIN32
         if(ImGui::MenuItem("Wall Paper Mode")){
             auto window = (HWND)this->getWindow()->getNative();
             LONG_PTR style = GetWindowLongPtr(window, GWL_EXSTYLE);
@@ -67,6 +68,7 @@ void MyApp::update(){
             SetLayeredWindowAttributes(window, RGB(0, 0, 0), 255, LWA_COLORKEY);
             SetWindowPos(window, HWND_BOTTOM, 0, 0, 800, 600, SWP_NOACTIVATE | SWP_NOZORDER);
         }
+#endif
         ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
@@ -92,6 +94,8 @@ void MyApp::update(){
             break;
         }
         case MyApp::PopupState::WhatEver:
+            break;
+        case MyApp::PopupState::None:
             break;
     }
     checkUpdateShaders();
