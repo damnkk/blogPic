@@ -67,7 +67,7 @@ namespace ecs{
         }
     };
 
-    class EventManager{
+    class EventManager:public cinder::Noncopyable{
     public:
         EventManager(){}
         ~EventManager(){}
