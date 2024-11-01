@@ -131,17 +131,27 @@ struct ExplosionSystem:public ecs::Receiver<ExplosionSystem>{
             std::cout<<"Boom!! a Bomb exploded with radius :"<< explosionEvent->_explosionRadius<<std::endl;
         }
     }
+
+    void receive(ecs::EntityCreatedEvent& event){
+        std::cout<<"Entity Created"<<std::endl;
+    }
+    void receive(ecs::EntityDestroyedEvent& event){
+        std::cout<<"Entity Destroyed"<<std::endl;
+    }
+    template<typename C>
+    void receive(ecs::ComponentAddedEvent<C>& event){
+        std::cout<<"Component"<<typeid(event).name()<<" Added"<<std::endl;
+    }
+    template<typename C>
+    void receive(ecs::ComponentRemovedEvent<C>& event){
+        std::cout<<"Component"<<typeid(event).name()<<" Removed"<<std::endl;
+    }
 };
 
-struct test{
-    int a;
+struct FuckPussyComponent{
+    FuckPussyComponent()=default;
+    float beet = 0.0;
 };
-
-struct boob:public test{
-
-};
-
-
 
 void MyApp::setup(){
     ImGui::Initialize();
@@ -157,12 +167,17 @@ void MyApp::setup(){
     EVTManager.subscribe<ExplosionEvent>(explosionSystem);
     EVTManager.emit<ExplosionEvent>(explosionEvent);
 
-    // test<int> tt;
-    // test<float> tf;
-    // std::cout<<typeid(tt).name()<<std::endl;
-    // std::cout<<typeid(tf).name()<<std::endl;
-    // boob bb;
-    // std::cout<<typeid(bb).name()<<std::endl;
+    ecs::EntityManager EntityMane(EVTManager);
+    EVTManager.subscribe<ecs::EntityCreatedEvent>(explosionSystem);
+    EVTManager.subscribe<ecs::EntityDestroyedEvent>(explosionSystem);
+    EVTManager.subscribe<ecs::ComponentAddedEvent<FuckPussyComponent>>(explosionSystem);
+    EVTManager.subscribe<ecs::ComponentRemovedEvent<FuckPussyComponent>>(explosionSystem);
+    auto entity = EntityMane.create();
+    entity.assign<FuckPussyComponent>();
+
+
+
+
 
 }
 

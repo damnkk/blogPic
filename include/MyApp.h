@@ -11,6 +11,7 @@
 #include <cinder/Thread.h>
 #include <MyScene.h>
 #include <ecs/Event.h>
+#include <ecs/Entity.h>
 
 struct MyProject;
 struct FileBroserWindow;

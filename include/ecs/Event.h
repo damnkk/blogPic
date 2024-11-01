@@ -33,8 +33,8 @@ namespace ecs{
         virtual ~BaseEvent() = default;
 
     }; 
-    
-    typedef cinder::signals::Signal<void(BaseEvent& )> EventSignal;
+ 
+    typedef cinder::signals::Signal<void(BaseEvent&)> EventSignal;
     typedef std::shared_ptr<EventSignal> EventSignalSPtr;
 
     struct BaseReceiver{
@@ -92,9 +92,10 @@ namespace ecs{
         }
         template<typename E, typename ... Args>
         void emit(Args&& ... args){
+            E event = E(std::forward<Args>(args)...);
             auto signal = signal_for(EventTypeID<E>::getID());
             if(signal){
-                signal->emit(std::forward<Args>(args)...);
+                signal->emit(event);
             }
         }
     protected:
@@ -110,12 +111,6 @@ namespace ecs{
         std::vector<EventSignalSPtr> _handles;
 
     };
-
-
-
-
-
-
 
 } // namespace ecs
 
