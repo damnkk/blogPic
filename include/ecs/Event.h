@@ -34,7 +34,7 @@ namespace ecs{
 
     }; 
  
-    typedef cinder::signals::Signal<void(BaseEvent&)> EventSignal;
+    typedef cinder::signals::Signal<void(void*)> EventSignal;
     typedef std::shared_ptr<EventSignal> EventSignalSPtr;
 
     struct BaseReceiver{
@@ -75,8 +75,9 @@ namespace ecs{
         template<typename E, typename Receiver>
         void subscribe(Receiver& receiver){
             auto signal = signal_for(EventTypeID<E>::getID());
-            auto conn = signal->connect([&receiver](BaseEvent& event){
-                receiver.receive(event);
+            auto conn = signal->connect([&receiver](void* event){
+                E* e = static_cast<E*>(event);
+                receiver.receive(*e);
             });
             BaseReceiver& baseRcv = receiver;
             baseRcv._connections[EventTypeID<E>::getID()] =  conn;
@@ -95,7 +96,7 @@ namespace ecs{
             E event = E(std::forward<Args>(args)...);
             auto signal = signal_for(EventTypeID<E>::getID());
             if(signal){
-                signal->emit(event);
+                signal->emit(&event);
             }
         }
     protected:

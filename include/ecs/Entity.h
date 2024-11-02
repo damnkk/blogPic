@@ -4,6 +4,7 @@
 #include <ecs/Event.h>
 #include <cinder/Cinder.h>
 #include <ecs/Pool.h>
+#include <bitset>
 namespace ecs{
 class EntityManager;
 typedef std::uint64_t uint64_t;
@@ -120,7 +121,7 @@ public:
     Entity entity() ;
 private:
     friend class EntityManager;
-    ComponentHandle<C> (EM* em,Entity::Id id):_em(em),_id(id){};
+    ComponentHandle (EM* em,Entity::Id id):_em(em),_id(id){};
     Entity::Id _id;
     EM* _em;
 };
@@ -346,7 +347,7 @@ private:
             _componentPools[typeId] = pool;
         }
         if(_componentHelpers.size()<=typeId){
-            _componentPools.resize(typeId+1,nullptr);
+            _componentHelpers.resize(typeId+1,nullptr);
         }
         if(!_componentHelpers[typeId]){
             _componentHelpers[typeId] = new ComponentHelper<C>();
