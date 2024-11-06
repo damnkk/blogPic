@@ -100,6 +100,8 @@ void MyApp::update(){
     }
     checkUpdateShaders();
 
+    manager.onGUI();
+
 }
 
 inline bool isShaderNeedUpdate(std::string& path,std::unordered_map<std::string, std::filesystem::file_time_type>& maps){
@@ -161,19 +163,23 @@ void MyApp::setup(){
     adjustForDPI();
     _fileBroserWindow = std::make_shared<FileBroserWindow>(this);
 
-    ecs::EventManager EVTManager;
-    ExplosionEvent explosionEvent(23.0);
-    ExplosionSystem explosionSystem;
-    EVTManager.subscribe<ExplosionEvent>(explosionSystem);
-    EVTManager.emit<ExplosionEvent>(explosionEvent);
+    // ecs::EventManager EVTManager;
+    // ExplosionEvent explosionEvent(23.0);
+    // ExplosionSystem explosionSystem;
+    // EVTManager.subscribe<ExplosionEvent>(explosionSystem);
+    // EVTManager.emit<ExplosionEvent>(explosionEvent);
 
-    ecs::EntityManager EntityMane(EVTManager);
-    EVTManager.subscribe<ecs::EntityCreatedEvent>(explosionSystem);
-    EVTManager.subscribe<ecs::EntityDestroyedEvent>(explosionSystem);
-    EVTManager.subscribe<ecs::ComponentAddedEvent<FuckPussyComponent>>(explosionSystem);
-    EVTManager.subscribe<ecs::ComponentRemovedEvent<FuckPussyComponent>>(explosionSystem);
-    auto entity = EntityMane.create();
-    entity.assign<FuckPussyComponent>();
+    // ecs::EntityManager EntityMane(EVTManager);
+    // EVTManager.subscribe<ecs::EntityCreatedEvent>(explosionSystem);
+    // EVTManager.subscribe<ecs::EntityDestroyedEvent>(explosionSystem);
+    // EVTManager.subscribe<ecs::ComponentAddedEvent<FuckPussyComponent>>(explosionSystem);
+    // EVTManager.subscribe<ecs::ComponentRemovedEvent<FuckPussyComponent>>(explosionSystem);
+    // auto entity = EntityMane.create();
+    // entity.assign<FuckPussyComponent>();
+
+    
+    manager.init(this);
+  
 
 
 

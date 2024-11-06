@@ -12,6 +12,7 @@
 #include <MyScene.h>
 #include <ecs/Event.h>
 #include <ecs/Entity.h>
+#include <MyWindowManager.h>
 
 struct MyProject;
 struct FileBroserWindow;
@@ -33,6 +34,7 @@ public:
     std::shared_ptr<MyProject> _myProject;
     std::shared_ptr<MyScene> _myScene;
     bool _newProject = false;
+    WindowManager manager;
 private:
     enum PopupState{
         NewProj,
