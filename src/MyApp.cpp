@@ -179,11 +179,9 @@ void MyApp::setup(){
 
     
     manager.init(this);
-  
-
-
-
-
+    Vector<int> test;
+    test.push_back(5);
+    
 
 }
 

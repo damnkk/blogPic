@@ -11,6 +11,7 @@ typedef std::uint64_t uint64_t;
 typedef std::uint32_t uint32_t;
 static const size_t MAX_COMPONENTS  = 64;
 
+
 template<typename C,typename EM = EntityManager>
 class ComponentHandle;
 

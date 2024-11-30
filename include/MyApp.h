@@ -13,6 +13,7 @@
 #include <ecs/Event.h>
 #include <ecs/Entity.h>
 #include <MyWindowManager.h>
+#include <core/MyMemoryAllocator.h>
 
 struct MyProject;
 struct FileBroserWindow;
