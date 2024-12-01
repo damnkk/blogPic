@@ -7,3 +7,9 @@
 [submodule "External/ImGuiFileDialog"]
 	path = External/ImGuiFileDialog
 	url = https://github.com/aiekick/ImGuiFileDialog.git
+[submodule "External/entityx"]
+	path = External/entityx
+	url = https://github.com/alecthomas/entityx.git
+[submodule "External/RTTR"]
+	path = External/RTTR
+	url = https://github.com/rttrorg/rttr.git

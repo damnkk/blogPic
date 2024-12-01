@@ -23,6 +23,12 @@ endif()
 
 include( ${CINDER_CMAKE_DIR}/libcinder_target.cmake )
 add_subdirectory(External/TBB)
+set(ENTITYX_BUILD_SHARED false CACHE BOOL "Build shared libraries?")
+add_subdirectory(External/entityx)
+set(BUILD_UNIT_TESTS false CACHE BOOL "Build unit tests")
+set(BUILD_EXAMPLES false CACHE BOOL "Build Examples")
+set(BUILD_STATIC true CACHE BOOL "Build Static")
+add_subdirectory(External/rttr)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp )
 message(${SOURCES})
 ci_make_app(
@@ -32,8 +38,10 @@ ci_make_app(
     INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include
     INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include/imgui
             ${CMAKE_CURRENT_SOURCE_DIR}/External/TBB/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/External/RTTR/src
             ${CMAKE_CURRENT_SOURCE_DIR}/include
-    LIBRARIES tbb tbbmalloc 
+            ${CMAKE_CURRENT_SOURCE_DIR}/External/entityx
+    LIBRARIES tbb tbbmalloc entityx RTTR::Core_Lib
 )
 
 # if( CINDER_BUILD_ALL_SAMPLES )
