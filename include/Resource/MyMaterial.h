@@ -1,6 +1,5 @@
 #ifndef MYMATERIAL_H
 #define MYMATERIAL_H
-#include <Utility/MyVariant.h>
 #include <cinder/Cinder.h>
 #include <cinder/gl/gl.h>
 #include <rttr/variant.h>

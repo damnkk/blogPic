@@ -16,18 +16,34 @@ class MyAppWindowBase {
   ImVec2        windowSize;
   static MyApp* _app;
 };
-
+struct UISystem;
 class MainBarWindow : public MyAppWindowBase {
  public:
+  MainBarWindow(UISystem* uiSystem) : _uiSystem(uiSystem){};
   void Draw() override;
+
+ private:
+  UISystem* _uiSystem;
 };
 
 class SceneHierarchyWindow : public MyAppWindowBase {
  public:
+  SceneHierarchyWindow(UISystem* uiSystem) : _uiSystem(uiSystem){};
   void Draw() override;
 
  private:
-  static std::vector<std::shared_ptr<SceneNode>> _selectedNode;
+  void      DrawRecursiveNode(std::shared_ptr<SceneNode> node);
+  UISystem* _uiSystem;
+};
+
+class NodeInspectorWindow : public MyAppWindowBase {
+ public:
+  NodeInspectorWindow(UISystem* uiSystem) : _uiSystem(uiSystem){};
+  void Draw() override;
+
+ private:
+  friend class SceneHierarchyWindow;
+  UISystem* _uiSystem;
 };
 
 class UISystem : public MyAppWindowBase {
@@ -38,8 +54,13 @@ class UISystem : public MyAppWindowBase {
   void Draw() override;
 
  private:
+  friend class MainBarWindow;
+  friend class SceneHierarchyWindow;
+  friend class NodeInspectorWindow;
   std::unique_ptr<MainBarWindow>        _mainBarWindow;
   std::unique_ptr<SceneHierarchyWindow> _sceneHierarchyWindow;
+  std::unique_ptr<NodeInspectorWindow>    _nodeInspectorWindow;
+  std::vector<std::shared_ptr<SceneNode>> _selectedNode;
 };
 
 #endif// MYAPPWINDOW_H

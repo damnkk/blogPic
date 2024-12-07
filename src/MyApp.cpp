@@ -19,12 +19,15 @@ void MyApp::draw() {
   glClearColor(0.2, 0.0, 0.2, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   if (_myProject && _myProject->type == MyProject::ProjectType::Proj2D) {
-    auto renderable = (ScreenRenderable*) (_myScene->_rootNode->_components.front().get());
+    auto renderable = (_myScene->_rootNode->_entity.component<ScreenRenderable>());
     renderable->batch->draw();
   }
 }
 
-void MyApp::update() { checkUpdateShaders(); }
+void MyApp::update() {
+  checkUpdateShaders();
+  if (_myScene) _myScene->update(this->entities, this->events, this->getFrameDeltaTime());
+}
 
 inline bool isShaderNeedUpdate(std::string& path,std::unordered_map<std::string, std::filesystem::file_time_type>& maps){
     if(!std::filesystem::exists(path)){
@@ -76,6 +79,13 @@ void MyApp::adjustForDPI(){
     io.FontGlobalScale = uiScale;
 }
 
+double MyApp::getFrameDeltaTime() {
+  auto   now = this->getElapsedSeconds();
+  double deltaTime = now - this->_lastTime;
+  _lastTime = now;
+  return deltaTime;
+}
+
 void MyApp::createProject(std::string basePath, MyProject::ProjectType projectType) {
 
   std::string shadersPath = basePath + "/shaders";
@@ -111,17 +121,19 @@ void MyApp::loadProject(const cinder::Json& projJson){
 
 void MyApp::load2DProject(const cinder::Json& projJson) {
   _myScene = this->systems.add<MySceneManageSystem>(MySceneManageSystem::SceneType::S2D, this);
-  std::shared_ptr<ScreenRenderable> screenRenderable = std::make_shared<ScreenRenderable>();
+  auto screenRenderable = _myScene->_rootNode->_entity.assign<ScreenRenderable>();
+  //   std::shared_ptr<ScreenRenderable> screenRenderable = std::make_shared<ScreenRenderable>();
   addAssetDirectory(projJson["basePath"]);
   auto                   prog = cinder::gl::GlslProg::create(cinder::app::loadAsset(std::string(projJson["shaders"].front()["VertexShader"])),
                                                              cinder::app::loadAsset(std::string(projJson["shaders"].front()["FragmentShader"])));
   cinder::gl::VboMeshRef quadRef = cinder::gl::VboMesh::create(cinder::geom::Rect());
   screenRenderable->batch = cinder::gl::Batch::create(quadRef, prog);
-  _myScene->_rootNode->_components.push_back(screenRenderable);
+  //   _myScene->_rootNode->_components.push_back(screenRenderable);
   _myProject->basePath = projJson["basePath"];
   _myProject->isLoaded = true;
   _myProject->shadersMap["new_project"] = prog;
   _popupState = PopupState::None;
+  entities.create();
 }
 
 void MyApp::load3DProject(const cinder::Json& projJson) {}
@@ -140,7 +152,7 @@ void MyApp::checkUpdateShaders(){
                 _myProject->shadersMap[prog.first] = shaderProgRef;
                 lastModifiedTimeStampsMap[vertShaderPath.substr(vertShaderPath.find_last_of("/\\"))] = std::filesystem::last_write_time(vertShaderPath);
                 lastModifiedTimeStampsMap[fragShaderPath.substr(fragShaderPath.find_last_of("/\\"))] = std::filesystem::last_write_time(fragShaderPath);
-                ((ScreenRenderable*)(_myScene->_rootNode->_components.front().get()))->batch ->replaceGlslProg(shaderProgRef);
+                (_myScene->_rootNode->_entity.component<ScreenRenderable>())->batch->replaceGlslProg(shaderProgRef);
             }
         }
     }

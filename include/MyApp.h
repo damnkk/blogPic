@@ -29,6 +29,7 @@ struct MyApp : public cinder::app::App, public entityx::EntityX {
   void loadProject(const cinder::Json& proj);
   void adjustForDPI();
   void checkUpdateShaders();
+  double getFrameDeltaTime();
 
  public:
   std::shared_ptr<UISystem>            _uiSystem;
@@ -42,6 +43,7 @@ struct MyApp : public cinder::app::App, public entityx::EntityX {
   void       load2DProject(const cinder::Json& projJson);
   void       load3DProject(const cinder::Json& projJson);
   PopupState _popupState = PopupState::None;
+  double     _lastTime = 0;
 };
 
 #endif // MYAPP_H
