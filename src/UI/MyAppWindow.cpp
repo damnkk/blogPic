@@ -9,7 +9,11 @@
 #include <shlobj.h>
 #endif// _WIN32
 #include <MyScene.h>
+
+#include "component/MyFilterRenderer.h"
+
 MyApp* MyAppWindowBase::_app = nullptr;
+std::vector<std::string> ComponentLists = {"FilterRenderer", "MeshRenderer"};
 
 void MainBarWindow::Draw() {
   bool                   createNewProject = false;
@@ -75,6 +79,15 @@ void UISystem::Draw() {
   _nodeInspectorWindow->Draw();
 }
 
+void UISystem::update() {
+  for (auto it = _selectedNode.begin(); it != _selectedNode.end(); it++) {
+    if (!it->get()->_eid.valid()) {
+      this->_selectedNode.erase(it);
+      break;
+    }
+  }
+}
+
 static char               newName[64];
 static ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Selected;
 void                      SceneHierarchyWindow::DrawRecursiveNode(std::shared_ptr<SceneNode> node) {
@@ -138,16 +151,36 @@ void SceneHierarchyWindow::Draw() {
   ImGui::End();
 }
 
+float degreesToRadians(float degrees) { return degrees * (M_PI / 180.0f); }
+
+void extractRotationAngles(const glm::quat& currQuat, float& pitch, float& yaw, float& roll) {
+  glm::vec3 euler = glm::eulerAngles(currQuat);
+  pitch = glm::degrees(euler.x);
+  yaw = glm::degrees(euler.y);
+  roll = glm::degrees(euler.z);
+}
+
+glm::mat4 adjustRotation(glm::quat& currentQuat, float pitch, float yaw, float roll) {
+  // 创建基于各个轴的增量四元数
+  glm::quat qPitch = glm::angleAxis(degreesToRadians(pitch), glm::vec3(1, 0, 0));// 绕X轴的增量旋转
+  glm::quat qYaw = glm::angleAxis(degreesToRadians(yaw), glm::vec3(0, 1, 0));    // 绕Y轴的增量旋转
+  glm::quat qRoll = glm::angleAxis(degreesToRadians(roll), glm::vec3(0, 0, 1));  // 绕Z轴的增量旋转
+  currentQuat = qRoll * qYaw * qPitch * currentQuat;
+  // 将增量四元数应用到当前的四元数
+  return glm::mat4_cast(currentQuat);// 注意乘法顺序
+}
+
 void NodeInspectorWindow::Draw() {
   ImGui::Begin("NodeInspector");
   if (this->_uiSystem->_selectedNode.empty()) {
     ImGui::Text("Please select a node first");
   } else {
+    static glm::vec3 rotateVector = glm::vec3(0.0);
     auto node = this->_uiSystem->_selectedNode.front();
     ImGui::Text("Now u got a node,width name ");
     ImGui::SameLine();
     ImGui::Text("%s", node->_name.c_str());
-    if (ImGui::CollapsingHeader("Transform")) {
+    if (ImGui::CollapsingHeader("Transform", true)) {
       glm::vec3 translate = glm::vec3(node->_transform[3]);
       glm::vec3 scale = glm::vec3(glm::length(glm::vec3(node->_transform[0])), glm::length(glm::vec3(node->_transform[1])),
                                   glm::length(glm::vec3(node->_transform[2])));
@@ -155,7 +188,40 @@ void NodeInspectorWindow::Draw() {
       rotationMatrix[0] = glm::normalize(rotationMatrix[0] / scale.x);
       rotationMatrix[1] = glm::normalize(rotationMatrix[1] / scale.y);
       rotationMatrix[2] = glm::normalize(rotationMatrix[2] / scale.z);
-      glm::quat q = glm::quat_cast(rotationMatrix);
+      glm::quat quat = glm::quat_cast(rotationMatrix);
+      glm::vec3 oldTranslate = translate;
+      glm::vec3 oldScale = scale;
+      glm::vec3 oldRotate = rotateVector;
+      ImGui::DragFloat3("Translate", &translate.x);
+      ImGui::DragFloat3("Scale", &scale.x, 0.1f, 0.0001f, 1000.0f, "%.3f");
+      ImGui::DragFloat3("Rotate", &rotateVector.x);
+      if ((translate != oldTranslate) || (scale != oldScale) || (rotateVector != oldRotate)) {
+        glm::mat4 transform = glm::translate(translate);
+        glm::mat4 rotation = adjustRotation(quat, rotateVector.x - oldRotate.x, rotateVector.y - oldRotate.y, rotateVector.z - oldRotate.z);
+        transform *= rotation;
+        transform *= glm::scale(scale);
+        this->_uiSystem->_selectedNode.front()->_transform = transform;
+      }
+    }
+
+    for (auto& [first, second] : node->_components) {
+      std::cout << "test" << std::endl;
+      second->onGUI();
+    }
+
+    ImVec2 windowSize = ImGui::GetWindowSize();
+
+    if (ImGui::ButtonEx("Add Component", ImVec2(windowSize.x, 50.0f))) { ImGui::OpenPopup("Components Lists"); }
+    if (ImGui::BeginPopup("Components Lists")) {
+      int selectedComponent = -1;
+      for (int i = 0; i < ComponentLists.size(); ++i) {
+        if (ImGui::Selectable(ComponentLists[i].c_str())) { selectedComponent = i; }
+      }
+      switch (selectedComponent) {
+        case 0: _uiSystem->_selectedNode.front()->addComponent(std::make_shared<MyFilterRenderer>());
+      }
+
+      ImGui::EndPopup();
     }
   }
   ImGui::End();

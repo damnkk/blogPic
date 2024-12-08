@@ -1,6 +1,7 @@
 #include <MyScene.h>
 
 #include "MyApp.h"
+std::atomic_uint64_t EID::_sid = 0;
 
 void SceneNode::invalidate() {
   _parent = nullptr;
@@ -8,7 +9,7 @@ void SceneNode::invalidate() {
     if (i) i->invalidate();
   }
   _childs.clear();
-  _entity.invalidate();
+  _eid.invalidate();
 }
 
 void SceneNode::addChild(std::shared_ptr<SceneNode> child){
@@ -17,7 +18,7 @@ void SceneNode::addChild(std::shared_ptr<SceneNode> child){
 }
 
 void SceneNode::addChild() {
-  auto child = std::make_shared<SceneNode>(_app->entities.create());
+  auto child = std::make_shared<SceneNode>(EID::Create());
   child->_app = _app;
   child->_parent = this;
   child->setName("EmptyNode_" + std::to_string(this->_childs.size()));
@@ -28,19 +29,25 @@ void SceneNode::removeChild(std::shared_ptr<SceneNode> child) {
   for (auto it = _childs.begin(); it != _childs.end(); ++it) {
     if (*it == child) {
       child->invalidate();
+      child = nullptr;
       _childs.erase(it);
       return;
     }
   }
 }
 
+void SceneNode::addComponent(std::shared_ptr<MyComponent> component) {
+  if (_components.find(std::string(component->get_type().get_name())) != _components.end()) { return; }
+  _components[std::string(component->get_type().get_name())] = component;
+};
+
 MySceneManageSystem::MySceneManageSystem(SceneType type, MyApp *app) : _sceneType(type), _app(app) {
-  _rootNode = std::make_shared<SceneNode>(_app->entities.create());
+  _rootNode = std::make_shared<SceneNode>(EID::Create());
   _rootNode->_app = app;
   _selectedNodes.reserve(8);
 }
 
-void MySceneManageSystem::update(entityx::EntityManager &entities, entityx::EventManager &events, entityx::TimeDelta dt) {
+void MySceneManageSystem::update(double delta_time) {
   while (!_nodeDelectionQueue.empty()) {
     auto node = _nodeDelectionQueue.front();
     _nodeDelectionQueue.pop();

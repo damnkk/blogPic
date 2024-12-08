@@ -3,6 +3,8 @@
 #include <Windows.h>
 #endif
 
+#include <My2DRenderSystem.h>
+#include <My3DRenderSystem.h>
 #include <MyBuiltInShaderCode.h>
 #include <MyProject.h>
 #include <UI/MyAppWindow.h>
@@ -18,15 +20,13 @@ void MyApp::draw() {
   _uiSystem->Draw();
   glClearColor(0.2, 0.0, 0.2, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-  if (_myProject && _myProject->type == MyProject::ProjectType::Proj2D) {
-    auto renderable = (_myScene->_rootNode->_entity.component<ScreenRenderable>());
-    renderable->batch->draw();
-  }
+  if (_myProject && _myProject->type == MyProject::ProjectType::Proj2D) { _renderSystem.get()->draw(); }
 }
 
 void MyApp::update() {
-  checkUpdateShaders();
-  if (_myScene) _myScene->update(this->entities, this->events, this->getFrameDeltaTime());
+  // checkUpdateShaders();
+  if (_myScene) _myScene->update(this->getFrameDeltaTime());
+  _uiSystem->update();
 }
 
 inline bool isShaderNeedUpdate(std::string& path,std::unordered_map<std::string, std::filesystem::file_time_type>& maps){
@@ -112,17 +112,24 @@ void MyApp::loadProject(const cinder::Json& projJson){
     _myProject = std::make_shared<MyProject>();
     MyProject::ProjectType projectType = projJson["ProjectType"];
     switch (projectType) {
-      case MyProject::ProjectType::Proj2D: load2DProject(projJson); break;
-      case MyProject::ProjectType::Proj3D: load3DProject(projJson); break;
+      case MyProject::ProjectType::Proj2D: {
+        load2DProject(projJson);
+        break;
+      }
+      case MyProject::ProjectType::Proj3D: {
+        load3DProject(projJson);
+        break;
+      }
       default: break;
     }
     _myProject->isLoaded = true;
 }
 
 void MyApp::load2DProject(const cinder::Json& projJson) {
-  _myScene = this->systems.add<MySceneManageSystem>(MySceneManageSystem::SceneType::S2D, this);
-  auto screenRenderable = _myScene->_rootNode->_entity.assign<ScreenRenderable>();
-  //   std::shared_ptr<ScreenRenderable> screenRenderable = std::make_shared<ScreenRenderable>();
+  _myScene = std::make_shared<MySceneManageSystem>(MySceneManageSystem::SceneType::S2D, this);
+  _renderSystem = std::make_shared<My2DRenderSystem>(_myScene.get());
+  auto screenRenderable = std::make_shared<ScreenRenderable>();
+  _myScene->_rootNode->addComponent(screenRenderable);
   addAssetDirectory(projJson["basePath"]);
   auto                   prog = cinder::gl::GlslProg::create(cinder::app::loadAsset(std::string(projJson["shaders"].front()["VertexShader"])),
                                                              cinder::app::loadAsset(std::string(projJson["shaders"].front()["FragmentShader"])));
@@ -133,27 +140,10 @@ void MyApp::load2DProject(const cinder::Json& projJson) {
   _myProject->isLoaded = true;
   _myProject->shadersMap["new_project"] = prog;
   _popupState = PopupState::None;
-  entities.create();
 }
 
 void MyApp::load3DProject(const cinder::Json& projJson) {}
 
 void MyApp::checkUpdateShaders(){
-     static std::unordered_map<std::string, std::filesystem::file_time_type> lastModifiedTimeStampsMap;
-    if(_myProject&&_myProject->isLoaded){
-        std::string shadersBasePath = _myProject->basePath+"/shaders";
-        for(auto& prog:_myProject->shadersMap){
-            std::string vertShaderPath = shadersBasePath+"/"+prog.first+".vert";
-            std::string fragShaderPath = shadersBasePath+"/"+prog.first+".frag";
-            bool vertNeedUpdate = isShaderNeedUpdate(vertShaderPath,lastModifiedTimeStampsMap);
-            bool fragNeedUpdate = isShaderNeedUpdate(fragShaderPath,lastModifiedTimeStampsMap);
-            if(vertNeedUpdate||fragNeedUpdate){
-                auto shaderProgRef = cinder::gl::GlslProg::create(cinder::app::loadAsset(vertShaderPath),cinder::app::loadAsset(fragShaderPath));
-                _myProject->shadersMap[prog.first] = shaderProgRef;
-                lastModifiedTimeStampsMap[vertShaderPath.substr(vertShaderPath.find_last_of("/\\"))] = std::filesystem::last_write_time(vertShaderPath);
-                lastModifiedTimeStampsMap[fragShaderPath.substr(fragShaderPath.find_last_of("/\\"))] = std::filesystem::last_write_time(fragShaderPath);
-                (_myScene->_rootNode->_entity.component<ScreenRenderable>())->batch->replaceGlslProg(shaderProgRef);
-            }
-        }
-    }
+  //  static std::unordered_map<s
 }

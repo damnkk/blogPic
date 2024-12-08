@@ -10,7 +10,8 @@ class MyFilterRenderer : public MyComponent {
   void draw() override;
   void update() override;
   void postUpdate() override;
-
+  void onGUI() override;
+  RTTR_ENABLE(MyComponent)
  protected:
   std::vector<MyFilter*> _filters;
 };

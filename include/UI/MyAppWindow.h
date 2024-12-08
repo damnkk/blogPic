@@ -52,6 +52,7 @@ class UISystem : public MyAppWindowBase {
   ~UISystem();
 
   void Draw() override;
+  void update();
 
  private:
   friend class MainBarWindow;

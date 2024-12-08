@@ -13,11 +13,13 @@
 #include <cinder/app/KeyEvent.h>
 #include <cinder/app/RendererGl.h>
 
+#include "MyRenderSystem.h"
+
 struct UISystem;
 struct MyProject;
 struct FileBroserWindow;
 
-struct MyApp : public cinder::app::App, public entityx::EntityX {
+struct MyApp : public cinder::app::App {
  public:
   void keyDown(cinder::app::KeyEvent event) override;
   void draw() override;
@@ -42,7 +44,8 @@ struct MyApp : public cinder::app::App, public entityx::EntityX {
   enum PopupState { NewProj, WhatEver, None };
   void       load2DProject(const cinder::Json& projJson);
   void       load3DProject(const cinder::Json& projJson);
-  PopupState _popupState = PopupState::None;
+  std::shared_ptr<MyRenderSystem> _renderSystem;
+  PopupState                      _popupState = PopupState::None;
   double     _lastTime = 0;
 };
 
