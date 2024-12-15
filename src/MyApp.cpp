@@ -48,7 +48,7 @@ void MyApp::setup() {
   auto font = io.Fonts->AddFontFromFileTTF("./asset/ttf/QingNiaoHuaGuangJianMeiHei-2.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
   adjustForDPI();
   _uiSystem = std::make_shared<UISystem>();
-  UISystem::init(this);
+  _uiSystem->init(this);
   _logger = cinder::log::makeLogger<cinder::log::LoggerSystem>();
   _logger->setLevel(cinder::log::LEVEL_INFO);
 }

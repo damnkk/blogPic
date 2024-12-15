@@ -9,6 +9,7 @@
 #include <shlobj.h>
 #endif// _WIN32
 #include <MyScene.h>
+#include <ui/MyComponentEditorBase.h>
 
 #include "component/MyFilterRenderer.h"
 
@@ -27,7 +28,7 @@ void MainBarWindow::Draw() {
         ImGui::EndMenu();
       }
       if (ImGui::MenuItem("Load")) {}
-      if (ImGui::MenuItem("Save")) {}
+      if (ImGui::MenuItem("Save")) { this->_app->_myProject.save(); }
       if (ImGui::MenuItem("Exit")) { this->_app->quit(); }
       ImGui::EndMenu();
     }
@@ -70,6 +71,7 @@ UISystem::UISystem() {
   _mainBarWindow = std::make_unique<MainBarWindow>(this);
   _sceneHierarchyWindow = std::make_unique<SceneHierarchyWindow>(this);
   _nodeInspectorWindow = std::make_unique<NodeInspectorWindow>(this);
+  _resourceManageWindow = std::make_unique<ResourceManageWindow>(this);
 }
 UISystem::~UISystem() {}
 
@@ -77,6 +79,7 @@ void UISystem::Draw() {
   _mainBarWindow->Draw();
   _sceneHierarchyWindow->Draw();
   _nodeInspectorWindow->Draw();
+  _resourceManageWindow->Draw();
 }
 
 void UISystem::update() {
@@ -131,11 +134,12 @@ void                      SceneHierarchyWindow::DrawRecursiveNode(std::shared_pt
 }
 
 void SceneHierarchyWindow::Draw() {
+  ImGui::Begin("Scene Hierarchy");
   if (_app->_myScene == nullptr) {
     ImGui::Text("No Scene");
+    ImGui::End();
     return;
   }
-  ImGui::Begin("Scene Hierarchy");
   if (ImGui::TreeNodeEx("RootNode", node_flags)) {
     if (ImGui::IsItemClicked(1)) { ImGui::OpenPopup("Node Operate"); }
     if (ImGui::BeginPopup("Node Operate")) {
@@ -180,33 +184,35 @@ void NodeInspectorWindow::Draw() {
     ImGui::Text("Now u got a node,width name ");
     ImGui::SameLine();
     ImGui::Text("%s", node->_name.c_str());
-    if (ImGui::CollapsingHeader("Transform", true)) {
-      glm::vec3 translate = glm::vec3(node->_transform[3]);
-      glm::vec3 scale = glm::vec3(glm::length(glm::vec3(node->_transform[0])), glm::length(glm::vec3(node->_transform[1])),
-                                  glm::length(glm::vec3(node->_transform[2])));
-      glm::mat4 rotationMatrix = glm::mat4(node->_transform);
-      rotationMatrix[0] = glm::normalize(rotationMatrix[0] / scale.x);
-      rotationMatrix[1] = glm::normalize(rotationMatrix[1] / scale.y);
-      rotationMatrix[2] = glm::normalize(rotationMatrix[2] / scale.z);
-      glm::quat quat = glm::quat_cast(rotationMatrix);
-      glm::vec3 oldTranslate = translate;
-      glm::vec3 oldScale = scale;
-      glm::vec3 oldRotate = rotateVector;
-      ImGui::DragFloat3("Translate", &translate.x);
-      ImGui::DragFloat3("Scale", &scale.x, 0.1f, 0.0001f, 1000.0f, "%.3f");
-      ImGui::DragFloat3("Rotate", &rotateVector.x);
-      if ((translate != oldTranslate) || (scale != oldScale) || (rotateVector != oldRotate)) {
-        glm::mat4 transform = glm::translate(translate);
-        glm::mat4 rotation = adjustRotation(quat, rotateVector.x - oldRotate.x, rotateVector.y - oldRotate.y, rotateVector.z - oldRotate.z);
-        transform *= rotation;
-        transform *= glm::scale(scale);
-        this->_uiSystem->_selectedNode.front()->_transform = transform;
-      }
+    ImGui::CollapsingHeader("Transform", true);
+    glm::vec3 translate = glm::vec3(node->_transform[3]);
+    glm::vec3 scale = glm::vec3(glm::length(glm::vec3(node->_transform[0])), glm::length(glm::vec3(node->_transform[1])),
+                                glm::length(glm::vec3(node->_transform[2])));
+    glm::mat4 rotationMatrix = glm::mat4(node->_transform);
+    rotationMatrix[0] = glm::normalize(rotationMatrix[0] / scale.x);
+    rotationMatrix[1] = glm::normalize(rotationMatrix[1] / scale.y);
+    rotationMatrix[2] = glm::normalize(rotationMatrix[2] / scale.z);
+    glm::quat quat = glm::quat_cast(rotationMatrix);
+    glm::vec3 oldTranslate = translate;
+    glm::vec3 oldScale = scale;
+    glm::vec3 oldRotate = rotateVector;
+    ImGui::DragFloat3("Translate", &translate.x);
+    ImGui::DragFloat3("Scale", &scale.x, 0.1f, 0.0001f, 1000.0f, "%.3f");
+    ImGui::DragFloat3("Rotate", &rotateVector.x);
+    if ((translate != oldTranslate) || (scale != oldScale) || (rotateVector != oldRotate)) {
+      glm::mat4 transform = glm::translate(translate);
+      glm::mat4 rotation = adjustRotation(quat, rotateVector.x - oldRotate.x, rotateVector.y - oldRotate.y, rotateVector.z - oldRotate.z);
+      transform *= rotation;
+      transform *= glm::scale(scale);
+      this->_uiSystem->_selectedNode.front()->_transform = transform;
     }
 
     for (auto& [first, second] : node->_components) {
-      std::cout << "test" << std::endl;
-      second->onGUI();
+      auto componentEditor = MyEditorFactory::instance()->getOrCreateEditor(first).get_value<MyComponentEditorBase*>();
+      if (componentEditor) {
+        std::cout << "test" << std::endl;
+        componentEditor->OnGUI(second.get());
+      }
     }
 
     ImVec2 windowSize = ImGui::GetWindowSize();
@@ -218,11 +224,16 @@ void NodeInspectorWindow::Draw() {
         if (ImGui::Selectable(ComponentLists[i].c_str())) { selectedComponent = i; }
       }
       switch (selectedComponent) {
-        case 0: _uiSystem->_selectedNode.front()->addComponent(std::make_shared<MyFilterRenderer>());
+        case 0: _uiSystem->_selectedNode.front()->addComponent(std::make_shared<MyFilterRenderer>(_uiSystem->_app));
       }
 
       ImGui::EndPopup();
     }
   }
+  ImGui::End();
+}
+
+void ResourceManageWindow::Draw() {
+  ImGui::Begin("ResourceManager");
   ImGui::End();
 }

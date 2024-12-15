@@ -8,6 +8,8 @@
 #include <vector>
 
 struct MyApp;
+struct MyRenderSystem;
+struct MySceneManageSystem;
 struct EID {
   static std::atomic_uint64_t _sid;
   static EID                  Create() { return {_sid++}; };
@@ -34,7 +36,8 @@ struct SceneNode : public MySerializable {
   glm::mat4                                 _transform;
   std::string                               _name;
   int                                       _stateFlag = NodeStateFlag_None;
-  MyApp                                    *_app;
+  MyApp                                                        *_app;
+  MySceneManageSystem                                          *_hostScene;
 };
 
 struct MySceneManageSystem {
@@ -45,7 +48,8 @@ struct MySceneManageSystem {
   SceneType                  _sceneType = SceneType::S2D;
   std::vector<std::shared_ptr<SceneNode>> _selectedNodes;
   std::queue<std::shared_ptr<SceneNode>>  _nodeDelectionQueue;
-  MyApp                     *_app;
+  MyApp                                  *_app;
+  std::shared_ptr<MyRenderSystem>         _renderSystem;
 };
 
 #endif // MYSCENE_H

@@ -46,6 +46,15 @@ class NodeInspectorWindow : public MyAppWindowBase {
   UISystem* _uiSystem;
 };
 
+class ResourceManageWindow : public MyAppWindowBase {
+ public:
+  ResourceManageWindow(UISystem* uiSystem) : _uiSystem(uiSystem){};
+  void Draw() override;
+
+ private:
+  UISystem* _uiSystem;
+};
+
 class UISystem : public MyAppWindowBase {
  public:
   UISystem();
@@ -61,6 +70,7 @@ class UISystem : public MyAppWindowBase {
   std::unique_ptr<MainBarWindow>        _mainBarWindow;
   std::unique_ptr<SceneHierarchyWindow> _sceneHierarchyWindow;
   std::unique_ptr<NodeInspectorWindow>    _nodeInspectorWindow;
+  std::unique_ptr<ResourceManageWindow>   _resourceManageWindow;
   std::vector<std::shared_ptr<SceneNode>> _selectedNode;
 };
 

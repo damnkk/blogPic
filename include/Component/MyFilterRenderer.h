@@ -2,18 +2,20 @@
 #define MY_FILTER_RENDERER_H
 #include <Component/MyComponent.h>
 struct MyFilter;
-
-class MyFilterRenderer : public MyComponent {
+struct MyApp;
+class MyFilterRenderer : public MyRenderable {
  public:
-  MyFilterRenderer();
-  ~MyFilterRenderer();
+  MyFilterRenderer() = default;
+  MyFilterRenderer(MyApp* app);
+  virtual ~MyFilterRenderer();
   void draw() override;
-  void update() override;
+  void update(double deltaTime) override;
   void postUpdate() override;
-  void onGUI() override;
-  RTTR_ENABLE(MyComponent)
+  void addFilter(std::string name);
+  RTTR_ENABLE(MyRenderable)
  protected:
-  std::vector<MyFilter*> _filters;
+  std::vector<std::shared_ptr<MyFilter>> _filters;
+  MyApp*                                 _app;
 };
 
 #endif// MY_FILTER_RENDERER_H

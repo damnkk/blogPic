@@ -1,13 +1,15 @@
 #include <Component/MyFilterRenderer.h>
+#include <Resource/MyMaterial.h>
 #include <imgui.h>
 
-MyFilterRenderer::MyFilterRenderer() {}
+#include "MyApp.h"
+#include "MyFilter.h"
+
+MyFilterRenderer::MyFilterRenderer(MyApp* app) : _app(app) {}
 
 MyFilterRenderer::~MyFilterRenderer() {}
 
-void MyFilterRenderer::onGUI() {
-  if (ImGui::CollapsingHeader("FilterRenderer")) { ImGui::Text("FilterRenderer"); }
-}
 void MyFilterRenderer::draw() {}
-void MyFilterRenderer::update() {}
+void MyFilterRenderer::update(double deltaTime) {}
 void MyFilterRenderer::postUpdate() {}
+void MyFilterRenderer::addFilter(std::string name) { auto filter = _filters.emplace_back(std::make_shared<MyFilter>(name)); }

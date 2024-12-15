@@ -3,12 +3,17 @@
 #include <cinder/gl/gl.h>
 #include <rttr/rttr_enable.h>
 struct MyComponent {
-  virtual void onGUI() {};
   virtual void preUpdate() {};
-  virtual void update() {};
+  virtual void update(double deltaTime) {};
   virtual void draw() {};
   virtual void postUpdate() {};
   RTTR_ENABLE()
+};
+
+struct MyRenderable : public MyComponent {
+
+  uint32_t _renderSortID = INT_MAX;
+  RTTR_ENABLE(MyComponent)
 };
 
 struct ScreenRenderable : public MyComponent {
