@@ -18,7 +18,7 @@ struct EID {
   uint64_t                    _id = 0;
 };
 
-struct SceneNode : public MySerializable {
+struct SceneNode {
   enum NodeStateFlag_ { NodeStateFlag_None = 0, NodeStateFlag_Selected = 1 << 0, NodeStateFlag_Rename = 1 << 1, NodeStateFlag_Deleted = 1 << 3 };
   SceneNode(EID id) : _eid(id){};
   ~SceneNode() { _parent = nullptr; }
@@ -29,7 +29,7 @@ struct SceneNode : public MySerializable {
   void                                                          addComponent(std::shared_ptr<MyComponent> component);
   std::vector<std::shared_ptr<SceneNode>>  &getChilds() { return _childs; }
   void                                      setName(const std::string &name) { _name = name; }
-  SceneNode                                *_parent;
+  SceneNode                                                    *_parent = nullptr;
   std::vector<std::shared_ptr<SceneNode>>   _childs;
   std::unordered_map<std::string, std::shared_ptr<MyComponent>> _components;
   EID                                                           _eid;
@@ -43,6 +43,7 @@ struct SceneNode : public MySerializable {
 struct MySceneManageSystem {
   enum SceneType { S2D, S3D };
   MySceneManageSystem(SceneType sceneType, MyApp *app);
+  std::vector<std::shared_ptr<SceneNode>> transfer();
   void                                    update(double dt);
   std::shared_ptr<SceneNode> _rootNode;
   SceneType                  _sceneType = SceneType::S2D;

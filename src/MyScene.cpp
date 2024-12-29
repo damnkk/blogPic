@@ -49,6 +49,7 @@ void SceneNode::addComponent(std::shared_ptr<MyComponent> component) {
 
 MySceneManageSystem::MySceneManageSystem(SceneType type, MyApp *app) : _sceneType(type), _app(app) {
   _rootNode = std::make_shared<SceneNode>(EID::Create());
+  _rootNode->_name = "RootNode";
   _rootNode->_app = app;
   _rootNode->_hostScene = this;
   _selectedNodes.reserve(8);
@@ -65,4 +66,16 @@ void MySceneManageSystem::update(double delta_time) {
     _nodeDelectionQueue.pop();
     node->_parent->removeChild(node);
   }
+}
+
+std::vector<std::shared_ptr<SceneNode>> MySceneManageSystem::transfer() {
+  std::queue<std::shared_ptr<SceneNode>>  transferQueue;
+  std::vector<std::shared_ptr<SceneNode>> list;
+  transferQueue.push(_rootNode);
+  while (!transferQueue.empty()) {
+    list.push_back(transferQueue.front());
+    for (auto child : transferQueue.front()->_childs) { transferQueue.push(child); }
+    transferQueue.pop();
+  }
+  return list;
 }

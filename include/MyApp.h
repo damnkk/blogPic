@@ -2,8 +2,6 @@
 #include <MyProject.h>
 #include <MyScene.h>
 #define IMGUI_DEFINE_MATH_OPERATORS_IMPLEMENTED
-#include <cinder/CinderImGui.h>
-#include <cinder/CinderImGuiConfig.h>
 #include <cinder/Color.h>
 #include <cinder/Json.h>
 #include <cinder/Log.h>
