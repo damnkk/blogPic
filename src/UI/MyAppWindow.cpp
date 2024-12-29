@@ -28,7 +28,7 @@ void MainBarWindow::Draw() {
         ImGui::EndMenu();
       }
       if (ImGui::MenuItem("Load")) {}
-      if (ImGui::MenuItem("Save")) { this->_app->_myProject.save(); }
+      if (ImGui::MenuItem("Save")) { this->_app->_myProject->save(); }
       if (ImGui::MenuItem("Exit")) { this->_app->quit(); }
       ImGui::EndMenu();
     }
