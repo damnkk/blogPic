@@ -82,6 +82,7 @@ static void ImGui_ImplCinder_NewFrameGuard(const ci::app::WindowRef& window) {
   g_Time = current_time;
 
   ImGui::NewFrame();
+  ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
   sTriggerNewFrame = false;
 }
@@ -152,6 +153,9 @@ void MyAppWindowBase::init(MyApp* app) {
 #endif
   ImGui::StyleColorsDark();
 
+  ImGui_ImplCinder_Init(window);
+  ImGui_ImplCinder_NewFrameGuard(window);
+  sTriggerNewFrame = true;
   sAppConnections += ci::app::App::get()->getSignalCleanup().connect([context]() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplCinder_Shutdown();
