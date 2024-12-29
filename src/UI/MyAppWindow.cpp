@@ -3,7 +3,8 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <MyApp.h>
 #include <imgui_internal.h>
-
+#include <backends/imgui_impl_opengl3.h>
+#include <cinder/Clipboard.h>
 #ifdef _WIN32
 #include <Windows.h>
 #include <shlobj.h>
@@ -14,7 +15,151 @@
 #include "component/MyFilterRenderer.h"
 
 MyApp* MyAppWindowBase::_app = nullptr;
+static bool                                                                sInitialized = false;
+static bool                                                                sTriggerNewFrame = false;
+static std::vector<int>                                                    sAccelKeys;
+static ci::signals::ConnectionList                                         sAppConnections;
+static std::unordered_map<ci::app::WindowRef, ci::signals::ConnectionList> sWindowConnections;
+
 std::vector<std::string> ComponentLists = {"FilterRenderer", "MeshRenderer"};
+static void              ImGui_ImplCinder_Shutdown() { sWindowConnections.clear(); }
+
+static void ImGui_ImplCinder_MouseDown(ci::app::MouseEvent& event) {
+  ImGuiIO& io = ImGui::GetIO();
+  io.MousePos = ImVec2(event.getWindow()->toPixels(event.getPos()).x, event.getWindow()->toPixels(event.getPos()).y);
+  io.MouseDown[0] = event.isLeftDown();
+  io.MouseDown[1] = event.isRightDown();
+  io.MouseDown[2] = event.isMiddleDown();
+  event.setHandled(io.WantCaptureMouse);
+}
+static void ImGui_ImplCinder_MouseUp(ci::app::MouseEvent& event) {
+  ImGuiIO& io = ImGui::GetIO();
+  io.MouseDown[0] = false;
+  io.MouseDown[1] = false;
+  io.MouseDown[2] = false;
+}
+static void ImGui_ImplCinder_MouseWheel(ci::app::MouseEvent& event) {
+  ImGuiIO& io = ImGui::GetIO();
+  io.MouseWheel += event.getWheelIncrement();
+  event.setHandled(io.WantCaptureMouse);
+}
+static void ImGui_ImplCinder_MouseMove(ci::app::MouseEvent& event) {
+  ImGuiIO& io = ImGui::GetIO();
+  io.MousePos = ImVec2(event.getWindow()->toPixels(event.getPos()).x, event.getWindow()->toPixels(event.getPos()).y);
+  event.setHandled(io.WantCaptureMouse);
+}
+//! sets the right mouseDrag IO values in imgui
+static void ImGui_ImplCinder_MouseDrag(ci::app::MouseEvent& event) {
+  ImGuiIO& io = ImGui::GetIO();
+  io.MousePos = ImVec2(event.getWindow()->toPixels(event.getPos()).x, event.getWindow()->toPixels(event.getPos()).y);
+  event.setHandled(io.WantCaptureMouse);
+}
+
+static void ImGui_ImplCinder_NewFrameGuard(const ci::app::WindowRef& window);
+
+static void ImGui_ImplCinder_Resize(const ci::app::WindowRef& window) {
+  ImGuiIO& io = ImGui::GetIO();
+  io.DisplaySize = ImVec2(ci::vec2(window->toPixels(window->getSize())).x, ci::vec2(window->toPixels(window->getSize())).y);
+
+  ImGui_ImplCinder_NewFrameGuard(window);
+}
+
+static void ImGui_ImplCinder_NewFrameGuard(const ci::app::WindowRef& window) {
+  if (!sTriggerNewFrame) return;
+
+  ImGui_ImplOpenGL3_NewFrame();
+
+  ImGuiIO& io = ImGui::GetIO();
+  IM_ASSERT(io.Fonts->IsBuilt());// Font atlas needs to be built, call renderer _NewFrame() function e.g. ImGui_ImplOpenGL3_NewFrame()
+
+  // Setup display size
+  io.DisplaySize = ImVec2(window->toPixels(window->getSize()).x, window->toPixels(window->getSize()).y);
+
+  // Setup time step
+  static double g_Time = 0.0f;
+  double        current_time = ci::app::getElapsedSeconds();
+  io.DeltaTime = g_Time > 0.0 ? (float) (current_time - g_Time) : (float) (1.0f / 60.0f);
+  g_Time = current_time;
+
+  ImGui::NewFrame();
+
+  sTriggerNewFrame = false;
+}
+
+static void ImGui_ImplCinder_PostDraw() {
+  ImGui::Render();
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+  sTriggerNewFrame = true;
+}
+
+static bool ImGui_ImplCinder_Init(const ci::app::WindowRef& window) {
+  // Setup back-end capabilities flags
+  ImGuiIO& io = ImGui::GetIO();
+  io.BackendPlatformName = "imgui_impl_cinder";
+
+#ifndef CINDER_LINUX
+  // clipboard callbacks
+  io.SetClipboardTextFn = [](void* user_data, const char* text) { ci::Clipboard::setString(std::string(text)); };
+  io.GetClipboardTextFn = [](void* user_data) {
+    std::string              str = ci::Clipboard::getString();
+    static std::vector<char> strCopy;
+    strCopy = std::vector<char>(str.begin(), str.end());
+    strCopy.push_back('\0');
+    return (const char*) &strCopy[0];
+  };
+#endif
+  int signalPriority = 0;
+  sWindowConnections[window] += window->getSignalMouseDown().connect(signalPriority, ImGui_ImplCinder_MouseDown);
+  sWindowConnections[window] += window->getSignalMouseUp().connect(signalPriority, ImGui_ImplCinder_MouseUp);
+  sWindowConnections[window] += window->getSignalMouseMove().connect(signalPriority, ImGui_ImplCinder_MouseMove);
+  sWindowConnections[window] += window->getSignalMouseDrag().connect(signalPriority, ImGui_ImplCinder_MouseDrag);
+  sWindowConnections[window] += window->getSignalMouseWheel().connect(signalPriority, ImGui_ImplCinder_MouseWheel);
+  // sWindowConnections[window] += window->getSignalKeyDown().connect(signalPriority, ImGui_ImplCinder_KeyDown);
+  // sWindowConnections[window] += window->getSignalKeyUp().connect(signalPriority, ImGui_ImplCinder_KeyUp);
+  sWindowConnections[window] += window->getSignalResize().connect(signalPriority, std::bind(ImGui_ImplCinder_Resize, window));
+  sWindowConnections[window] += ci::app::App::get()->getSignalUpdate().connect(std::bind(ImGui_ImplCinder_NewFrameGuard, window));
+  sWindowConnections[window] += window->getSignalDraw().connect(std::bind(ImGui_ImplCinder_NewFrameGuard, window));
+  sWindowConnections[window] += window->getSignalPostDraw().connect(ImGui_ImplCinder_PostDraw);
+  sWindowConnections[window] += window->getSignalClose().connect([=] {
+    sWindowConnections.erase(window);
+    sTriggerNewFrame = false;
+  });
+
+  return true;
+}
+
+void MyAppWindowBase::init(MyApp* app) {
+  if (sInitialized) return;
+  _app = app;
+  auto context = ImGui::CreateContext();
+  // context->CurrentDpiScale = 1.0;
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+  ci::app::WindowRef window = app->getWindow();
+  io.DisplaySize = ImVec2(window->toPixels(window->getSize()).x, window->toPixels(window->getSize()).y);
+  io.DeltaTime = 1.0f / 60.0f;
+  io.WantCaptureMouse = true;
+
+  io.IniFilename = "./imgui.ini";
+
+#if !defined(CINDER_GL_ES)
+  ImGui_ImplOpenGL3_Init("#version 150");
+#else
+  ImGui_ImplOpenGL3_Init();
+#endif
+  ImGui::StyleColorsDark();
+
+  sAppConnections += ci::app::App::get()->getSignalCleanup().connect([context]() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplCinder_Shutdown();
+    ImGui::DestroyContext(context);
+  });
+  sInitialized = true;
+  return;
+}
 
 void MainBarWindow::Draw() {
   bool                   createNewProject = false;
@@ -28,7 +173,7 @@ void MainBarWindow::Draw() {
         ImGui::EndMenu();
       }
       if (ImGui::MenuItem("Load")) {}
-      if (ImGui::MenuItem("Save")) { this->_app->_myProject.save(); }
+      if (ImGui::MenuItem("Save")) { this->_app->_myProject->save(); }
       if (ImGui::MenuItem("Exit")) { this->_app->quit(); }
       ImGui::EndMenu();
     }
@@ -92,7 +237,7 @@ void UISystem::update() {
 }
 
 static char               newName[64];
-static ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_Selected;
+static ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow;
 void                      SceneHierarchyWindow::DrawRecursiveNode(std::shared_ptr<SceneNode> node) {
   if (!node) { return; }
   if (ImGui::TreeNodeEx(node->_name.c_str(), node_flags)) {
@@ -126,7 +271,7 @@ void                      SceneHierarchyWindow::DrawRecursiveNode(std::shared_pt
     node->_app->_myScene->_nodeDelectionQueue.push(node);
     return;
   }
-  if (ImGui::IsItemClicked(0)) {
+  if (ImGui::IsItemClicked()) {
     auto uiSystem = node->_app->_uiSystem;
     uiSystem->_selectedNode.clear();
     uiSystem->_selectedNode.push_back(node);
@@ -146,10 +291,7 @@ void SceneHierarchyWindow::Draw() {
       if (ImGui::MenuItem("Add Node")) { _app->_myScene->_rootNode->addChild(); }
       ImGui::EndPopup();
     }
-    for (auto& child : _app->_myScene->_rootNode->getChilds()) {
-      int a = 1;
-      DrawRecursiveNode(child);
-    }
+    for (auto& child : _app->_myScene->_rootNode->getChilds()) { DrawRecursiveNode(child); }
     ImGui::TreePop();
   }
   ImGui::End();
@@ -196,7 +338,7 @@ void NodeInspectorWindow::Draw() {
     glm::vec3 oldTranslate = translate;
     glm::vec3 oldScale = scale;
     glm::vec3 oldRotate = rotateVector;
-    ImGui::DragFloat3("Translate", &translate.x);
+    ImGui::DragFloat3("Translate", glm::value_ptr(translate));
     ImGui::DragFloat3("Scale", &scale.x, 0.1f, 0.0001f, 1000.0f, "%.3f");
     ImGui::DragFloat3("Rotate", &rotateVector.x);
     if ((translate != oldTranslate) || (scale != oldScale) || (rotateVector != oldRotate)) {
@@ -224,7 +366,7 @@ void NodeInspectorWindow::Draw() {
         if (ImGui::Selectable(ComponentLists[i].c_str())) { selectedComponent = i; }
       }
       switch (selectedComponent) {
-        case 0: _uiSystem->_selectedNode.front()->addComponent(std::make_shared<MyFilterRenderer>(_uiSystem->_app));
+        case 0: _uiSystem->_selectedNode.front()->addComponent(MyComponentPool::instance()->createComponent<MyFilterRenderer>(_uiSystem->_app));
       }
 
       ImGui::EndPopup();

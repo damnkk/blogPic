@@ -9,7 +9,7 @@ struct MyApp;
 class MyAppWindowBase {
  public:
   virtual void Draw() = 0;
-  static void  init(MyApp* app) { _app = app; };
+  static void  init(MyApp* app);
 
  protected:
   ImVec2        windowPos;

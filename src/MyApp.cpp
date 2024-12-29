@@ -42,13 +42,12 @@ inline bool isShaderNeedUpdate(std::string& path,std::unordered_map<std::string,
 }
 
 void MyApp::setup() {
-  ImGui::Initialize();
+  _uiSystem = std::make_shared<UISystem>();
+  _uiSystem->init(this);
   auto window = this->getWindow();
   auto io = ImGui::GetIO();
   auto font = io.Fonts->AddFontFromFileTTF("./asset/ttf/QingNiaoHuaGuangJianMeiHei-2.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
   adjustForDPI();
-  _uiSystem = std::make_shared<UISystem>();
-  _uiSystem->init(this);
   _logger = cinder::log::makeLogger<cinder::log::LoggerSystem>();
   _logger->setLevel(cinder::log::LEVEL_INFO);
 }
@@ -109,19 +108,20 @@ void MyApp::createProject(std::string basePath, MyProject::ProjectType projectTy
 }
 
 void MyApp::loadProject(const cinder::Json& projJson){
-    _myProject = std::make_shared<MyProject>();
-    MyProject::ProjectType projectType = projJson["ProjectType"];
-    switch (projectType) {
-      case MyProject::ProjectType::Proj2D: {
-        load2DProject(projJson);
-        break;
-      }
-      case MyProject::ProjectType::Proj3D: {
-        load3DProject(projJson);
-        break;
-      }
-      default: break;
+  _myProject = std::make_shared<MyProject>();
+  _myProject->app = this;
+  MyProject::ProjectType projectType = projJson["ProjectType"];
+  switch (projectType) {
+    case MyProject::ProjectType::Proj2D: {
+      load2DProject(projJson);
+      break;
     }
+    case MyProject::ProjectType::Proj3D: {
+      load3DProject(projJson);
+      break;
+    }
+    default: break;
+  }
     _myProject->isLoaded = true;
 }
 
@@ -135,7 +135,6 @@ void MyApp::load2DProject(const cinder::Json& projJson) {
                                                              cinder::app::loadAsset(std::string(projJson["shaders"].front()["FragmentShader"])));
   cinder::gl::VboMeshRef quadRef = cinder::gl::VboMesh::create(cinder::geom::Rect());
   screenRenderable->batch = cinder::gl::Batch::create(quadRef, prog);
-  //   _myScene->_rootNode->_components.push_back(screenRenderable);
   _myProject->basePath = projJson["basePath"];
   _myProject->isLoaded = true;
   _myProject->shadersMap["new_project"] = prog;

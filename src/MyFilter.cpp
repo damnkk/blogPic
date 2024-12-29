@@ -21,3 +21,8 @@ void MyFilter::setMaterial(std::shared_ptr<MyMaterial> material) {
   _material = material;
   _batch = cinder::gl::Batch::create(getQuadMesh(), _material->getProgram());
 }
+
+cinder::Json MyFilter::transfer() {
+  cinder::Json res;
+  return res;
+}

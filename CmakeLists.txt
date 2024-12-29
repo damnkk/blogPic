@@ -4,6 +4,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 set(CINDER_CMAKE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/proj/cmake CACHE PATH "Path to the cinder cmake directory")
 set(CINDER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder CACHE PATH "Path to the cinder directory")
 set(CINDER_BUILD_ALL_SAMPLES OFF CACHE BOOL "Disable AntTweakBar support")
+set(CINDER_DISABLE_IMGUI ON CACHE BOOL "Disable ImGui support")
 set(TBB_TEST OFF CACHE BOOL "Disable TBB tests")
 include (${CINDER_CMAKE_DIR}/configure.cmake)
 include( ${CINDER_CMAKE_DIR}/libcinder_configure.cmake )
@@ -30,13 +31,20 @@ set(BUILD_EXAMPLES false CACHE BOOL "Build Examples")
 set(BUILD_STATIC true CACHE BOOL "Build Static")
 add_subdirectory(External/rttr)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp )
+list(APPEND SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/External/imgui/imgui_draw.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/External/imgui/imgui_widgets.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/External/imgui/imgui.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/External/imgui/imgui_tables.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/External/imgui/backends/imgui_impl_opengl3.cpp
+# ${CMAKE_CURRENT_SOURCE_DIR}/External/imgui/backends/imgui_impl_glfw.cpp
+ )
 message(${SOURCES})
 ci_make_app(
     APP_NAME appLearn
     CINDER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder
     SOURCES ${SOURCES}
-    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include
-    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include/imgui
+    # INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/imgui
             ${CMAKE_CURRENT_SOURCE_DIR}/External/TBB/include
             ${CMAKE_CURRENT_SOURCE_DIR}/External/RTTR/src
             ${CMAKE_CURRENT_SOURCE_DIR}/include

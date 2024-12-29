@@ -4,6 +4,8 @@
 #include <cinder/gl/gl.h>
 #include <uuid.h>
 #include <Resource/MyResource.h>
+
+struct MyApp;
 class AssetManager {
  public:
   void createAsset(MyResourceType type);
@@ -19,6 +21,7 @@ struct MyProject{
   std::unordered_map<std::string, cinder::gl::GlslProgRef> shadersMap;
   std::string                                              basePath;
   bool                                                     isLoaded = false;
+  MyApp*                                                   app = nullptr;
 };
 
 

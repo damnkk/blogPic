@@ -1,12 +1,16 @@
 #ifndef MYFILTER_H
 #define MYFILTER_H
 #include <cinder/gl/gl.h>
+#include <cinder/Json.h>
 struct MyMaterial;
+
 struct MyFilter {
   MyFilter() = default;
   MyFilter(const std::string& name, int width = 1920, int height = 1080);
   virtual ~MyFilter() {}
   void setMaterial(std::shared_ptr<MyMaterial> material);
+  std::string  getName() const { return _name; }
+  cinder::Json transfer();
 
  private:
   cinder::gl::VboMeshRef getQuadMesh() const;

@@ -12,10 +12,12 @@ class MyFilterRenderer : public MyRenderable {
   void update(double deltaTime) override;
   void postUpdate() override;
   void addFilter(std::string name);
+  cinder::Json transfer() override;
   RTTR_ENABLE(MyRenderable)
  protected:
   std::vector<std::shared_ptr<MyFilter>> _filters;
   MyApp*                                 _app;
+  bool                                   _isEnable = true;
 };
 
 #endif// MY_FILTER_RENDERER_H
