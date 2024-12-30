@@ -1,6 +1,7 @@
 #ifndef MYSERIALIZABLE_H
 #define MYSERIALIZABLE_H
 #include <utility/uuid.h>
+#include <rttr/rttr_enable.h>
 struct UUIDFactory {
   static uuids::uuid generateUUID() {
     static UUIDFactory factory = UUIDFactory();
@@ -15,6 +16,7 @@ struct UUIDFactory {
 struct MySerializable {
   MySerializable() : _uuid(UUIDFactory::generateUUID()) {}
   uuids::uuid _uuid;
+  RTTR_ENABLE()
 };
 
 #endif // MYSERIALIZABLE_H

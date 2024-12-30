@@ -22,7 +22,7 @@ void SceneNode::addChild(std::shared_ptr<SceneNode> child){
 }
 
 void SceneNode::addChild() {
-  auto child = std::make_shared<SceneNode>(EID::Create());
+  auto child = std::shared_ptr<SceneNode>(new SceneNode(EID::Create()));
   child->_app = _app;
   child->_parent = this;
   child->_hostScene = this->_hostScene;
@@ -48,7 +48,8 @@ void SceneNode::addComponent(std::shared_ptr<MyComponent> component) {
 };
 
 MySceneManageSystem::MySceneManageSystem(SceneType type, MyApp *app) : _sceneType(type), _app(app) {
-  _rootNode = std::make_shared<SceneNode>(EID::Create());
+
+  _rootNode = std::shared_ptr<SceneNode>(new SceneNode(EID::Create()));
   _rootNode->_name = "RootNode";
   _rootNode->_app = app;
   _rootNode->_hostScene = this;
@@ -66,6 +67,13 @@ void MySceneManageSystem::update(double delta_time) {
     _nodeDelectionQueue.pop();
     node->_parent->removeChild(node);
   }
+}
+
+std::shared_ptr<SceneNode> MySceneManageSystem::CreateSceneNode() {
+  auto node = std::shared_ptr<SceneNode>(new SceneNode(EID::Create()));
+  node->_app = this->_app;
+  node->_hostScene = this;
+  return node;
 }
 
 std::vector<std::shared_ptr<SceneNode>> MySceneManageSystem::transfer() {

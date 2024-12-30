@@ -6,9 +6,12 @@
 
 RTTR_REGISTRATION {
   using namespace rttr;
+  registration::class_<MySerializable>("MySerializable").constructor<>();
+  registration::class_<MyRenderable>("MyRenderable").constructor<>();
   registration::class_<MyComponent>("MyComponent").constructor<>();
   registration::class_<MyFilterRenderer>("MyFilterRenderer")
       .constructor<>()
+
       .method("draw", &MyFilterRenderer::draw)
       .method("update", &MyFilterRenderer::update)
       .method("postUpdate", &MyFilterRenderer::postUpdate);

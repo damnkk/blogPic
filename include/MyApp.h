@@ -26,7 +26,7 @@ struct MyApp : public cinder::app::App {
   // void cleanup() override;
  public:
   void createProject(std::string basePath, MyProject::ProjectType projectType);
-  void loadProject(const cinder::Json& proj);
+  void   loadProject(std::string path);
   void adjustForDPI();
   void checkUpdateShaders();
   double getFrameDeltaTime();

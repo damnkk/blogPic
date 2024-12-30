@@ -13,7 +13,7 @@ struct MyComponent : public MySerializable {
   virtual void postUpdate() {};
   virtual cinder::Json transfer() { return {}; };
 
-  RTTR_ENABLE()
+  RTTR_ENABLE(MySerializable)
 };
 
 struct MyRenderable : public MyComponent {
@@ -40,6 +40,19 @@ class MyComponentPool {
     rttr::type type = rttr::type::get<T>();
     _componentPools[type.get_name().to_string()].push_back(std::make_shared<T>());
     return std::static_pointer_cast<T>(_componentPools[type.get_name().to_string()].back());
+  }
+
+  std::shared_ptr<MyComponent> getComponentFromUUID(const uuids::uuid uuid, std::string typeID) {
+    for (auto& component : _componentPools[typeID]) {
+      if (component && component->_uuid == uuid) { return component; }
+    }
+    rttr::type type = rttr::type::get_by_name(typeID);
+    assert(type.is_valid());
+    rttr::variant var = type.create();
+    assert(var.is_valid());
+    std::shared_ptr<MyComponent> component = (var.get_value<std::shared_ptr<MyComponent>>());
+    component->_uuid = uuid;
+    return std::shared_ptr<MyComponent>(component);
   }
 
  private:

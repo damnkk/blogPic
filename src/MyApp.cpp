@@ -13,6 +13,8 @@
 #include <chrono>
 #include <filesystem>
 
+#include <component/MyFilterRenderer.h>
+
 void MyApp::keyDown(cinder::app::KeyEvent event){
 }
 
@@ -87,27 +89,20 @@ double MyApp::getFrameDeltaTime() {
 
 void MyApp::createProject(std::string basePath, MyProject::ProjectType projectType) {
 
-  std::string shadersPath = basePath + "/shaders";
-  std::filesystem::create_directory(shadersPath);
-  std::ofstream file(shadersPath + "/default.vert");
-  if (file) { file << builtIntVertShader; }
-  file.close();
-  file = std::ofstream(shadersPath + "/default.frag");
-  if (file) { file << builtIntFragShader; }
-  file.close();
-
   cinder::Json projJson;
   projJson["name"] = basePath.substr(basePath.find_last_of('\\'), basePath.size());
   projJson["ProjectType"] = projectType;
-  projJson["shaders"] = {{"new_project", {{"VertexShader", "shaders/default.vert"}, {"FragmentShader", "shaders/default.frag"}}}};
-  projJson["basePath"] = basePath;
-  file = std::ofstream(basePath + "/" + basePath.substr(basePath.find_last_of('\\'), basePath.size()) + ".json");
-  if (file) { file << projJson; }
-  file.close();
+  projJson["BasePath"] = basePath;
+  projJson["NodesMap"] = cinder::Json::array();
+  projJson["ComponentsMap"] = {};
   this->loadProject(projJson);
 }
 
-void MyApp::loadProject(const cinder::Json& projJson){
+void MyApp::loadProject(std::string path) {
+  std::ifstream file(path);
+  if (!file.is_open()) { CI_LOG_E("ERROR: " << path << "is not open"); }
+  cinder::Json projJson;
+  file >> projJson;
   _myProject = std::make_shared<MyProject>();
   _myProject->app = this;
   MyProject::ProjectType projectType = projJson["ProjectType"];
@@ -128,16 +123,37 @@ void MyApp::loadProject(const cinder::Json& projJson){
 void MyApp::load2DProject(const cinder::Json& projJson) {
   _myScene = std::make_shared<MySceneManageSystem>(MySceneManageSystem::SceneType::S2D, this);
   _renderSystem = std::make_shared<My2DRenderSystem>(_myScene.get());
-  auto screenRenderable = std::make_shared<ScreenRenderable>();
-  _myScene->_rootNode->addComponent(screenRenderable);
-  addAssetDirectory(projJson["basePath"]);
-  auto                   prog = cinder::gl::GlslProg::create(cinder::app::loadAsset(std::string(projJson["shaders"].front()["VertexShader"])),
-                                                             cinder::app::loadAsset(std::string(projJson["shaders"].front()["FragmentShader"])));
-  cinder::gl::VboMeshRef quadRef = cinder::gl::VboMesh::create(cinder::geom::Rect());
-  screenRenderable->batch = cinder::gl::Batch::create(quadRef, prog);
-  _myProject->basePath = projJson["basePath"];
+  addAssetDirectory(std::string(projJson["BasePath"]));
+  _myProject->basePath = projJson["BasePath"];
+  std::vector<std::shared_ptr<SceneNode>> nodeList;
+  if (!projJson["NodesMap"].empty()) {
+    for (auto& jsonNode : projJson["NodesMap"]) {
+      if (jsonNode.is_null()) {
+        nodeList.push_back(nullptr);
+        continue;
+      }
+      auto node = _myScene->CreateSceneNode();
+      node->_name = jsonNode["name"];
+      for (auto& compUID : jsonNode["components"]) {
+        auto componentNode = projJson["ComponentsMap"][compUID.get<std::string>()];
+        auto component = MyComponentPool::instance()->getComponentFromUUID(uuids::uuid::from_string(compUID.get<std::string>()).value(),
+                                                                           componentNode["ComponentTypeID"].get<std::string>());
+        // auto component = std::make_shared<MyFilterRenderer>(this);
+        node->addComponent(component);
+      }
+      nodeList.push_back(node);
+    }
+  }
+  for (int i = 0; i < nodeList.size(); i++) {
+    if (!nodeList[i]) continue;
+    if (projJson["NodesMap"][i]["parent"] == -1) {
+      _myScene->_rootNode = nodeList[i];
+    } else {
+      nodeList[i]->_parent = nodeList[projJson["NodesMap"][i]["parent"]].get();
+    }
+    for (auto& childID : projJson["NodesMap"][i]["childs"]) { nodeList[i]->addChild(nodeList[childID]); }
+  }
   _myProject->isLoaded = true;
-  _myProject->shadersMap["new_project"] = prog;
   _popupState = PopupState::None;
 }
 

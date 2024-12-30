@@ -16,7 +16,7 @@ class AssetManager {
 };
 struct MyProject{
   enum class ProjectType { Proj2D, Proj3D, _Count };
-  void                                                     save() {};
+  void                                                     save();
   ProjectType                                              type;
   std::unordered_map<std::string, cinder::gl::GlslProgRef> shadersMap;
   std::string                                              basePath;

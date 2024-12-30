@@ -55,6 +55,123 @@ static void ImGui_ImplCinder_MouseDrag(ci::app::MouseEvent& event) {
   event.setHandled(io.WantCaptureMouse);
 }
 
+int convertCinderKeyToImguiKey(int cinderKey) {
+  switch (cinderKey) {
+    case ci::app::KeyEvent::KEY_BACKSPACE: return ImGuiKey_Backspace;
+    case ci::app::KeyEvent::KEY_DELETE: return ImGuiKey_Delete;
+    case ci::app::KeyEvent::KEY_RSHIFT: return ImGuiKey_RightShift;
+    case ci::app::KeyEvent::KEY_LSHIFT: return ImGuiKey_LeftShift;
+    case ci::app::KeyEvent::KEY_LCTRL: return ImGuiKey_LeftCtrl;
+    case ci::app::KeyEvent::KEY_RCTRL: return ImGuiKey_RightCtrl;
+    case ci::app::KeyEvent::KEY_SPACE: return ImGuiKey_Space;
+    case ci::app::KeyEvent::KEY_TAB: return ImGuiKey_Tab;
+    case ci::app::KeyEvent::KEY_RETURN: return ImGuiKey_Enter;
+    case ci::app::KeyEvent::KEY_ESCAPE: return ImGuiKey_Escape;
+    case ci::app::KeyEvent::KEY_a: return ImGuiKey_A;
+    case ci::app::KeyEvent::KEY_b: return ImGuiKey_B;
+    case ci::app::KeyEvent::KEY_c: return ImGuiKey_C;
+    case ci::app::KeyEvent::KEY_d: return ImGuiKey_D;
+    case ci::app::KeyEvent::KEY_e: return ImGuiKey_E;
+    case ci::app::KeyEvent::KEY_f: return ImGuiKey_F;
+    case ci::app::KeyEvent::KEY_g: return ImGuiKey_G;
+    case ci::app::KeyEvent::KEY_h: return ImGuiKey_H;
+    case ci::app::KeyEvent::KEY_i: return ImGuiKey_I;
+    case ci::app::KeyEvent::KEY_j: return ImGuiKey_J;
+    case ci::app::KeyEvent::KEY_k: return ImGuiKey_K;
+    case ci::app::KeyEvent::KEY_l: return ImGuiKey_L;
+    case ci::app::KeyEvent::KEY_m: return ImGuiKey_M;
+    case ci::app::KeyEvent::KEY_n: return ImGuiKey_N;
+    case ci::app::KeyEvent::KEY_o: return ImGuiKey_O;
+    case ci::app::KeyEvent::KEY_p: return ImGuiKey_P;
+    case ci::app::KeyEvent::KEY_q: return ImGuiKey_Q;
+    case ci::app::KeyEvent::KEY_r: return ImGuiKey_R;
+    case ci::app::KeyEvent::KEY_s: return ImGuiKey_S;
+    case ci::app::KeyEvent::KEY_t: return ImGuiKey_T;
+    case ci::app::KeyEvent::KEY_u: return ImGuiKey_U;
+    case ci::app::KeyEvent::KEY_v: return ImGuiKey_V;
+    case ci::app::KeyEvent::KEY_w: return ImGuiKey_W;
+    case ci::app::KeyEvent::KEY_x: return ImGuiKey_X;
+    case ci::app::KeyEvent::KEY_y: return ImGuiKey_Y;
+    case ci::app::KeyEvent::KEY_z: return ImGuiKey_Z;
+    case ci::app::KeyEvent::KEY_0: return ImGuiKey_0;
+    case ci::app::KeyEvent::KEY_1: return ImGuiKey_1;
+    case ci::app::KeyEvent::KEY_2: return ImGuiKey_2;
+    case ci::app::KeyEvent::KEY_3: return ImGuiKey_3;
+    case ci::app::KeyEvent::KEY_4: return ImGuiKey_4;
+    case ci::app::KeyEvent::KEY_5: return ImGuiKey_5;
+    case ci::app::KeyEvent::KEY_6: return ImGuiKey_6;
+    case ci::app::KeyEvent::KEY_7: return ImGuiKey_7;
+    case ci::app::KeyEvent::KEY_8: return ImGuiKey_8;
+    case ci::app::KeyEvent::KEY_9: return ImGuiKey_9;
+    case ci::app::KeyEvent::KEY_F1: return ImGuiKey_F1;
+    case ci::app::KeyEvent::KEY_F2: return ImGuiKey_F2;
+    case ci::app::KeyEvent::KEY_F3: return ImGuiKey_F3;
+    case ci::app::KeyEvent::KEY_F4: return ImGuiKey_F4;
+    case ci::app::KeyEvent::KEY_F5: return ImGuiKey_F5;
+    case ci::app::KeyEvent::KEY_F6: return ImGuiKey_F6;
+    case ci::app::KeyEvent::KEY_F7: return ImGuiKey_F7;
+    case ci::app::KeyEvent::KEY_F8: return ImGuiKey_F8;
+    case ci::app::KeyEvent::KEY_F9: return ImGuiKey_F9;
+    case ci::app::KeyEvent::KEY_F10: return ImGuiKey_F10;
+    case ci::app::KeyEvent::KEY_F11: return ImGuiKey_F11;
+    case ci::app::KeyEvent::KEY_F12: return ImGuiKey_F12;
+    case ci::app::KeyEvent::KEY_EQUALS: return ImGuiKey_Equal;
+    case ci::app::KeyEvent::KEY_MINUS: return ImGuiKey_Minus;
+    case ci::app::KeyEvent::KEY_COMMA: return ImGuiKey_Comma;
+    case ci::app::KeyEvent::KEY_PERIOD: return ImGuiKey_Period;
+    case ci::app::KeyEvent::KEY_LEFTBRACKET: return ImGuiKey_LeftBracket;
+    case ci::app::KeyEvent::KEY_RIGHTBRACKET: return ImGuiKey_RightBracket;
+    case ci::app::KeyEvent::KEY_SLASH: return ImGuiKey_Slash;
+
+    case ci::app::KeyEvent::KEY_CAPSLOCK: return ImGuiKey_CapsLock;
+    default: return ImGuiKey_COUNT;
+  }
+}
+
+static void ImGui_ImplCinder_KeyDown(ci::app::KeyEvent& event) {
+  ImGuiIO& io = ImGui::GetIO();
+
+#if defined CINDER_LINUX
+  auto character = event.getChar();
+#else
+  uint32_t character = event.getCharUtf32();
+#endif
+
+  io.AddKeyEvent((ImGuiKey) convertCinderKeyToImguiKey(event.getCode()), true);
+  if ((ImGuiKey) convertCinderKeyToImguiKey(event.getCode()) == ImGuiKey_CapsLock) {
+    // ImGui::IsNamedKeyOrMod(ImGuiKey key)
+  }
+  if (!event.isAccelDown() && character > 0 && character <= 255) {
+    io.AddInputCharacter((char) character);
+  } else if (event.getCode() != ci::app::KeyEvent::KEY_LMETA && event.getCode() != ci::app::KeyEvent::KEY_RMETA && event.isAccelDown()
+             && find(sAccelKeys.begin(), sAccelKeys.end(), event.getCode()) == sAccelKeys.end()) {
+    sAccelKeys.push_back(event.getCode());
+  }
+
+  io.KeyCtrl = event.isControlDown();
+  io.KeyShift = event.isShiftDown();
+  io.KeyAlt = event.isAltDown();
+  io.KeySuper = event.isMetaDown();
+
+  event.setHandled(io.WantCaptureKeyboard);
+}
+
+static void ImGui_ImplCinder_KeyUp(ci::app::KeyEvent& event) {
+  ImGuiIO& io = ImGui::GetIO();
+
+  io.AddKeyEvent((ImGuiKey) convertCinderKeyToImguiKey(event.getCode()), false);
+
+  // for (auto key : sAccelKeys) { io.KeysDown[key] = false; }
+  sAccelKeys.clear();
+
+  io.KeyCtrl = event.isControlDown();
+  io.KeyShift = event.isShiftDown();
+  io.KeyAlt = event.isAltDown();
+  io.KeySuper = event.isMetaDown();
+
+  event.setHandled(io.WantCaptureKeyboard);
+}
+
 static void ImGui_ImplCinder_NewFrameGuard(const ci::app::WindowRef& window);
 
 static void ImGui_ImplCinder_Resize(const ci::app::WindowRef& window) {
@@ -115,8 +232,8 @@ static bool ImGui_ImplCinder_Init(const ci::app::WindowRef& window) {
   sWindowConnections[window] += window->getSignalMouseMove().connect(signalPriority, ImGui_ImplCinder_MouseMove);
   sWindowConnections[window] += window->getSignalMouseDrag().connect(signalPriority, ImGui_ImplCinder_MouseDrag);
   sWindowConnections[window] += window->getSignalMouseWheel().connect(signalPriority, ImGui_ImplCinder_MouseWheel);
-  // sWindowConnections[window] += window->getSignalKeyDown().connect(signalPriority, ImGui_ImplCinder_KeyDown);
-  // sWindowConnections[window] += window->getSignalKeyUp().connect(signalPriority, ImGui_ImplCinder_KeyUp);
+  sWindowConnections[window] += window->getSignalKeyDown().connect(signalPriority, ImGui_ImplCinder_KeyDown);
+  sWindowConnections[window] += window->getSignalKeyUp().connect(signalPriority, ImGui_ImplCinder_KeyUp);
   sWindowConnections[window] += window->getSignalResize().connect(signalPriority, std::bind(ImGui_ImplCinder_Resize, window));
   sWindowConnections[window] += ci::app::App::get()->getSignalUpdate().connect(std::bind(ImGui_ImplCinder_NewFrameGuard, window));
   sWindowConnections[window] += window->getSignalDraw().connect(std::bind(ImGui_ImplCinder_NewFrameGuard, window));
@@ -166,17 +283,29 @@ void MyAppWindowBase::init(MyApp* app) {
 }
 
 void MainBarWindow::Draw() {
-  bool                   createNewProject = false;
+  enum { CreateProject, LoadProject } eventCase;
+  bool                   openFileBrowser = false;
   MyProject::ProjectType type = MyProject::ProjectType::_Count;
   if (ImGui::BeginMainMenuBar()) {
     if (ImGui::BeginMenu("File")) {
       if (ImGui::BeginMenu("New Project")) {
-        createNewProject = true;
-        if (ImGui::MenuItem("2D Project")) { type = MyProject::ProjectType::Proj2D; }
-        if (ImGui::MenuItem("3D Project")) { type = MyProject::ProjectType::Proj3D; }
+
+        if (ImGui::MenuItem("2D Project")) {
+          openFileBrowser = true;
+          eventCase = CreateProject;
+          type = MyProject::ProjectType::Proj2D;
+        }
+        if (ImGui::MenuItem("3D Project")) {
+          openFileBrowser = true;
+          eventCase = CreateProject;
+          type = MyProject::ProjectType::Proj3D;
+        }
         ImGui::EndMenu();
       }
-      if (ImGui::MenuItem("Load")) {}
+      if (ImGui::MenuItem("Load")) {
+        openFileBrowser = true;
+        eventCase = LoadProject;
+      }
       if (ImGui::MenuItem("Save")) { this->_app->_myProject->save(); }
       if (ImGui::MenuItem("Exit")) { this->_app->quit(); }
       ImGui::EndMenu();
@@ -191,7 +320,7 @@ void MainBarWindow::Draw() {
     }
     ImGui::EndMainMenuBar();
   }
-  if (createNewProject && type != MyProject::ProjectType::_Count) {
+  if (openFileBrowser) {
 #ifdef _WIN32
     char         folderPath[256];
     const WCHAR* title = L"New Project";
@@ -202,17 +331,26 @@ void MainBarWindow::Draw() {
     bi.lpszTitle = title;// 显示位于对话框左上部的提示信息
     bi.lpfn = NULL;
     bi.iImage = 0;
-    bi.ulFlags = BIF_DONTGOBELOWDOMAIN | BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    bi.ulFlags = BIF_DONTGOBELOWDOMAIN | BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE | BIF_BROWSEINCLUDEFILES;
     LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
     if (pidl) {
       SHGetPathFromIDListA(pidl, folderPath);
-      _app->createProject(folderPath, type);
-      ImGui::NewFrame();
+      switch (eventCase) {
+        case CreateProject: {
+          _app->createProject(folderPath, type);
+          break;
+        }
+        case LoadProject: {
+          _app->loadProject(folderPath);
+          break;
+        }
+      }
     } else {
       std::cout << "ERROR: Failed to open Folder" << std::endl;
     }
+    ImGui::NewFrame();
 #endif
-    createNewProject = false;
+    openFileBrowser = false;
   }
 }
 
@@ -241,9 +379,11 @@ void UISystem::update() {
 }
 
 static char               newName[64];
-static ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow;
+static ImGuiTreeNodeFlags node_flags =
+    ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
 void                      SceneHierarchyWindow::DrawRecursiveNode(std::shared_ptr<SceneNode> node) {
   if (!node) { return; }
+
   if (ImGui::TreeNodeEx(node->_name.c_str(), node_flags)) {
     if (ImGui::IsItemClicked(1)) { ImGui::OpenPopup("Node Operate"); }
     if (ImGui::BeginPopup("Node Operate")) {
@@ -268,17 +408,17 @@ void                      SceneHierarchyWindow::DrawRecursiveNode(std::shared_pt
         memset(newName, 0, 64);
       }
     }
+    if (ImGui::IsItemClicked(0) && !ImGui::IsItemToggledOpen()) {
+      auto uiSystem = node->_app->_uiSystem;
+      uiSystem->_selectedNode.clear();
+      uiSystem->_selectedNode.push_back(node);
+    }
     for (auto& child : node->getChilds()) { DrawRecursiveNode(child); }
     ImGui::TreePop();
   }
   if (node->_stateFlag & SceneNode::NodeStateFlag_Deleted) {
     node->_app->_myScene->_nodeDelectionQueue.push(node);
     return;
-  }
-  if (ImGui::IsItemClicked()) {
-    auto uiSystem = node->_app->_uiSystem;
-    uiSystem->_selectedNode.clear();
-    uiSystem->_selectedNode.push_back(node);
   }
 }
 
