@@ -19,3 +19,5 @@ cinder::Json MyFilterRenderer::transfer() {
   for (auto& filter : _filters) { res[filter->getName()] = filter->transfer(); }
   return res;
 }
+
+void MyFilterRenderer::transfer(cinder::Json& json) {}

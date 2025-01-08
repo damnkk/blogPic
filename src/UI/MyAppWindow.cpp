@@ -10,6 +10,8 @@
 #include <shlobj.h>
 #endif// _WIN32
 #include <MyScene.h>
+#include <MyProject.h>
+#include <Resource/MyMaterial.h>
 #include <ui/MyComponentEditorBase.h>
 
 #include "component/MyFilterRenderer.h"
@@ -521,5 +523,37 @@ void NodeInspectorWindow::Draw() {
 
 void ResourceManageWindow::Draw() {
   ImGui::Begin("ResourceManager");
+  ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+  if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags)) {
+    if (ImGui::BeginTabItem("ALL")) {
+      ImGui::Text("ALL");
+
+      if (ImGui::IsMouseClicked(1)) {
+        std::cout << "right click" << std::endl;
+        ImGui::OpenPopup("ALL Popup");
+      }
+      if (ImGui::BeginPopup("ALL Popup", ImGuiPopupFlags_None)) {
+        if (ImGui::MenuItem("Material")) {
+          auto materialSptr = std::shared_ptr<MyMaterial>((MyMaterial*) AssetManager::instance()->createAssetByName("MyMaterial").get());
+        }
+        ImGui::EndPopup();
+      }
+
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Material")) {
+      ImGui::Text("Material");
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Shader")) {
+      ImGui::Text("Shader");
+      ImGui::EndTabItem();
+    }
+    if (ImGui::BeginTabItem("Mesh")) {
+      ImGui::Text("Mesh");
+      ImGui::EndTabItem();
+    }
+    ImGui::EndTabBar();
+  }
   ImGui::End();
 }

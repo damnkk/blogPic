@@ -52,6 +52,7 @@ void MyApp::setup() {
   adjustForDPI();
   _logger = cinder::log::makeLogger<cinder::log::LoggerSystem>();
   _logger->setLevel(cinder::log::LEVEL_INFO);
+  AssetManager::instance()->init(this->getAppPath().string());
 }
 
 void MyApp::adjustForDPI(){
@@ -138,7 +139,7 @@ void MyApp::load2DProject(const cinder::Json& projJson) {
         auto componentNode = projJson["ComponentsMap"][compUID.get<std::string>()];
         auto component = MyComponentPool::instance()->getComponentFromUUID(uuids::uuid::from_string(compUID.get<std::string>()).value(),
                                                                            componentNode["ComponentTypeID"].get<std::string>());
-        // auto component = std::make_shared<MyFilterRenderer>(this);
+        component->transfer(componentNode);
         node->addComponent(component);
       }
       nodeList.push_back(node);

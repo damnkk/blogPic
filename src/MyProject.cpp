@@ -1,6 +1,24 @@
 #include <MyProject.h>
 #include <MyApp.h>
 #define str(x) std::to_string(x)
+
+std::shared_ptr<MyResource> AssetManager::createAssetByName(const std::string& name) {
+  rttr::type assetType = rttr::type::get_by_name(name);
+  if (assetType.is_valid()) {
+    std::vector<rttr::argument> args = {rttr::variant(UUIDFactory::generateUUID())};
+    rttr::variant               var = assetType.create();
+    if (!var.is_valid()) {
+      std::cout << "asset" << std::endl;
+      CI_LOG_E("fffffuck");
+    }
+    auto ptr = var.get_value<std::shared_ptr<MyResource>>();
+    _resourceMap["name"].push_back(ptr);
+
+    return ptr;
+  }
+  return nullptr;
+}
+
 void MyProject::save() {
   cinder::Json Scene;
   cinder::Json UUidMap;

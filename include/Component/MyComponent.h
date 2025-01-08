@@ -12,6 +12,7 @@ struct MyComponent : public MySerializable {
   virtual void draw() {};
   virtual void postUpdate() {};
   virtual cinder::Json transfer() { return {}; };
+  virtual void         transfer(cinder::Json& json) {};
 
   RTTR_ENABLE(MySerializable)
 };

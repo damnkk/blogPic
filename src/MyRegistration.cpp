@@ -1,7 +1,7 @@
 #ifndef MYREGISTRATION_H
 #define MYREGISTRATION_H
 #include "MyRegistration.h"
-
+#include <Resource/MyMaterial.h>
 #include <rttr/registration.h>
 
 RTTR_REGISTRATION {
@@ -9,6 +9,7 @@ RTTR_REGISTRATION {
   registration::class_<MySerializable>("MySerializable").constructor<>();
   registration::class_<MyRenderable>("MyRenderable").constructor<>();
   registration::class_<MyComponent>("MyComponent").constructor<>();
+  registration::class_<MyMaterial>("MyMaterial").constructor<>();
   registration::class_<MyFilterRenderer>("MyFilterRenderer")
       .constructor<>()
 

@@ -1,6 +1,7 @@
 #include <MyFilter.h>
 
 #include "Resource/MyMaterial.h"
+#include <immintrin.h>
 
 MyFilter::MyFilter(const std::string &name, int width, int height) {
   this->_name = name;
@@ -8,7 +9,7 @@ MyFilter::MyFilter(const std::string &name, int width, int height) {
   this->_size.y = height;
 
   cinder::gl::Fbo::Format fmt{};
-  this->_Fbo = cinder::gl::Fbo::create(width, height, fmt);
+  _rt = MyRenderTexture(width, height, fmt);
 }
 
 cinder::gl::VboMeshRef MyFilter::getQuadMesh() const {
@@ -19,10 +20,14 @@ cinder::gl::VboMeshRef MyFilter::getQuadMesh() const {
 void MyFilter::setMaterial(std::shared_ptr<MyMaterial> material) {
   if (_material == material) { return; }
   _material = material;
-  _batch = cinder::gl::Batch::create(getQuadMesh(), _material->getProgram());
+  // _batch = cinder::gl::Batch::create(getQuadMesh(), _material->getProgram());
 }
 
 cinder::Json MyFilter::transfer() {
   cinder::Json res;
+  res["name"] = _name;
+  res["size"] = cinder::Json::array({_size.x, _size.y});
+  res["material"] = _material->transfer();
+
   return res;
 }
