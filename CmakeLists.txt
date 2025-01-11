@@ -28,5 +28,6 @@ ci_make_app(
     INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/External/cinder/include
             ${CMAKE_CURRENT_SOURCE_DIR}/External/TBB/include
             ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/External/tinygltf
     LIBRARIES tbb tbbmalloc
 )

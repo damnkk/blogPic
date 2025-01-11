@@ -4,3 +4,6 @@
 [submodule "External/TBB"]
 	path = External/TBB
 	url = https://github.com/oneapi-src/oneTBB.git
+[submodule "External/tinygltf"]
+	path = External/tinygltf
+	url = https://github.com/syoyo/tinygltf.git
