@@ -29,7 +29,7 @@ struct MyApp : public cinder::app::App {
 
   // void mouseMove(cinder::app::MouseEvent event) override;
   void mouseDrag(cinder::app::MouseEvent event) override;
-  enum PipelineType { Pip_Ulit, Pip_SkyBox, _count };
+  enum PipelineType { Pip_lit, Pip_SkyBox, _count };
 
 private:
   cinder::CameraPersp mainCamera;

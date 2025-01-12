@@ -17,7 +17,6 @@ elseif( CINDER_MSW )
 else()
 	message( FATAL_ERROR "no target defined for system: '${CMAKE_SYSTEM_NAME}.'" )
 endif()
-
 include( ${CINDER_CMAKE_DIR}/libcinder_target.cmake )
 add_subdirectory(External/TBB)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)

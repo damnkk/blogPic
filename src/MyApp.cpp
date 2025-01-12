@@ -119,15 +119,21 @@ void MyApp::setup() {
   mainCamera.setEyePoint(cinder::vec3(0.0, 0.0, 2.0));
   mainCamera.setNearClip(0.1);
   mainCamera.setFarClip(1000000.0);
-  this->addAssetDirectory(u8"C:/Users/Amin/Desktop/AssetPath/shader/");
+  this->addAssetDirectory(u8"./AssetPath/shader/");
   tinygltf::Model model;
-  drawableList = LoadGltfModel(
-      "D:/repo/DogEngine/models/DamagedHelmet/DamagedHelmet.gltf");
+  drawableList = LoadGltfModel("./DamagedHelmet/DamagedHelmet.gltf");
   pipelines.resize((int)PipelineType::_count);
-  pipelines[PipelineType::Pip_Ulit] = cinder::gl::GlslProg::create(
-      cinder::gl::GlslProg::Format()
-          .vertex(cinder::app::loadAsset("vertex.vert"))
-          .fragment(cinder::app::loadAsset("fragment.frag")));
+  try {
+
+    pipelines[PipelineType::Pip_lit] = cinder::gl::GlslProg::create(
+        cinder::gl::GlslProg::Format()
+            .vertex(cinder::app::loadAsset("vertex.vert"))
+            .fragment(cinder::app::loadAsset("fragment.frag")));
+  } catch (...) {
+    CI_LOG_E("Failed to compile updated shaders");
+
+    pipelines[PipelineType::Pip_lit] = nullptr;
+  }
 
   cinder::gl::enableDepthRead();
   cinder::gl::enableDepthWrite();
@@ -137,23 +143,26 @@ float rotate = 0.0;
 
 void MyApp::update() {
 
-  CI_LOG_I(this->getAverageFps());
+  // CI_LOG_I(this->getAverageFps());
   static auto startTime = std::chrono::steady_clock::now();
   auto now = std::chrono::steady_clock::now();
   float elapsed = std::chrono::duration<float>(now - startTime).count();
   float angle = elapsed * 0.1f;
   cinder::mat4 rotateMat =
       glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0, 1, 0));
-  this->pipelines[PipelineType::Pip_Ulit]->uniform("model", rotateMat);
-  this->pipelines[PipelineType::Pip_Ulit]->uniform("view",
-                                                   mainCamera.getViewMatrix());
-  this->pipelines[PipelineType::Pip_Ulit]->uniform(
-      "projection", mainCamera.getProjectionMatrix());
+  if (pipelines[PipelineType::Pip_lit]) {
+
+    this->pipelines[PipelineType::Pip_lit]->uniform("model", rotateMat);
+    this->pipelines[PipelineType::Pip_lit]->uniform("view",
+                                                    mainCamera.getViewMatrix());
+    this->pipelines[PipelineType::Pip_lit]->uniform(
+        "projection", mainCamera.getProjectionMatrix());
+  }
 
   {
     static std::filesystem::file_time_type lastVertWrite;
     static std::filesystem::file_time_type lastFragWrite;
-    std::string basePath = "C:/Users/Amin/Desktop/AssetPath/shader/";
+    std::string basePath = "./AssetPath/shader/";
     auto vertPath = basePath + "vertex.vert";
     auto fragPath = basePath + "fragment.frag";
     if (std::filesystem::exists(vertPath) &&
@@ -166,11 +175,12 @@ void MyApp::update() {
               cinder::gl::GlslProg::Format()
                   .vertex(cinder::app::loadAsset("vertex.vert"))
                   .fragment(cinder::app::loadAsset("fragment.frag")));
-          pipelines[PipelineType::Pip_Ulit] = newProg;
+          pipelines[PipelineType::Pip_lit] = newProg;
           lastVertWrite = newVertWrite;
           lastFragWrite = newFragWrite;
         } catch (...) {
           CI_LOG_E("Failed to compile updated shaders");
+          pipelines[PipelineType::Pip_lit] = nullptr;
         }
       }
     }
@@ -180,12 +190,17 @@ void MyApp::update() {
 void MyApp::draw() {
   // cinder::gl::clear();
   cinder::gl::clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  cinder::gl::clearColor(cinder::ColorA(1.0f, 1.0f, 0.0f, 1.0f));
-  for (auto &mesh : drawableList) {
-    mesh._vao->bind();
-    mesh._ebo->bind();
-    this->pipelines[PipelineType::Pip_Ulit]->bind();
-    mesh.draw();
+  if (pipelines[PipelineType::Pip_lit]) {
+
+    cinder::gl::clearColor(cinder::ColorA(1.0f, 1.0f, 0.0f, 1.0f));
+    for (auto &mesh : drawableList) {
+      mesh._vao->bind();
+      mesh._ebo->bind();
+      this->pipelines[PipelineType::Pip_lit]->bind();
+      mesh.draw();
+    }
+  } else {
+    cinder::gl::clearColor(cinder::ColorA(1.0f, 0.0f, 1.0f, 1.0f));
   }
 }
 
