@@ -171,10 +171,17 @@ void MyApp::update() {
       auto newFragWrite = std::filesystem::last_write_time(fragPath);
       if (newVertWrite != lastVertWrite || newFragWrite != lastFragWrite) {
         try {
+          auto start = std::chrono::high_resolution_clock::now();
           auto newProg = cinder::gl::GlslProg::create(
               cinder::gl::GlslProg::Format()
                   .vertex(cinder::app::loadAsset("vertex.vert"))
                   .fragment(cinder::app::loadAsset("fragment.frag")));
+          auto end = std::chrono::high_resolution_clock::now();
+          CI_LOG_I("Compile time: "
+                   << std::chrono::duration_cast<std::chrono::milliseconds>(
+                          end - start)
+                          .count()
+                   << "ms");
           pipelines[PipelineType::Pip_lit] = newProg;
           lastVertWrite = newVertWrite;
           lastFragWrite = newFragWrite;

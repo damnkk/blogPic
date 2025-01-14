@@ -4,24 +4,24 @@
 #define REFRACTION_TYPE_SOLID                          1
 
 #define REFRACTION_TYPE                                 REFRACTION_TYPE_SOLID
-#define SHADING_MODEL_UNLIT                             0
-#define SHADING_MODEL_SPECULAR_GLOSSINESS               0   
-#define SHADING_MODEL_CLOTH                             0            
+#define SHADING_MODEL_UNLIT 1
+#define SHADING_MODEL_SPECULAR_GLOSSINESS 0
+#define SHADING_MODEL_CLOTH 0
 #define SHADING_MODEL_SUBSURFACE                        0
 #define MATERIAL_HAS_REFRACTION                         0
 #define MATERIAL_HAS_REFLECTANCE                        0
 #define MATERIAL_HAS_SUBSURFACE_COLOR                   0
 #define MATERIAL_HAS_NORMAL                             1
-#define MATERIAL_HAS_BENT_NORMAL                        0
+#define MATERIAL_HAS_BENT_NORMAL 1
 #define MATERIAL_HAS_CLEAR_COAT                         0
-#define MATERIAL_HAS_CLEAR_COAT_NORMAL                  0 
+#define MATERIAL_HAS_CLEAR_COAT_NORMAL 0
 #define MATERIAL_HAS_POST_LIGHTING_COLOR                0
 #define MATERIAL_HAS_ABSORPTION                         0
 #define MATERIAL_HAS_TRANSMISSION                       0
 #define MATERIAL_HAS_IOR                                0
 #define MATERIAL_HAS_MICRO_THICKNESS                    0
 #define MATERIAL_HAS_SPECULAR_FACTOR                    0
-#define MATERIAL_HAS_SPECULAR_COLOR_FACTOR              1
+#define MATERIAL_HAS_SPECULAR_COLOR_FACTOR 0
 #define MATERIAL_HAS_EMISSIVE                           1
 #define MATERIAL_HAS_SHEEN_COLOR                        0
 #define MATERIAL_HAS_ANISOTROPY                         0
@@ -37,7 +37,11 @@ in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 out vec4 FragColor;
+vec3 shading_reflected;  // reflection of view about normal
+float shading_NoV;
 uniform float exposure;
+uniform vec3 cameraPos;
+uniform sampler2D sampler0_iblDFG;
 
 float sq(float x) {
     return x * x;
@@ -398,6 +402,7 @@ void getSpecularPixelParams(const MaterialInputs material, inout PixelParams pix
 
 void getCommonPixelParams(const MaterialInputs material, inout PixelParams pixel) {
     vec4 baseColor = material.baseColor;
+#if SHADING_MODEL_UNLIT == 0
 #if SHADING_MODEL_SPECULAR_GLOSSINESS==1
     vec3 specularColor = material.specularColor;
     float metallic = computeMetallicFromSpecularColor(specularColor);
@@ -409,7 +414,7 @@ void getCommonPixelParams(const MaterialInputs material, inout PixelParams pixel
     float reflectance = iorToF0(max(1.0, material.ior), 1.0);
 #else
     float reflectance = computeDielectricF0(material.reflectance);
-#endif 
+#endif  // SHADING_MODEL_SUBSURFACE==0&&(MATERIAL_HAS_REFLECTANCE==0&&MATERIAL_HAS_IOR==1)
 #if MATERIAL_HAS_SPECULAR_FACTOR==0 && MATERIAL_HAS_SPECULAR_COLOR_FACTOR==0
     pixel.f0 = computeF0(baseColor, material.metallic, reflectance);
 #else
@@ -417,51 +422,232 @@ void getCommonPixelParams(const MaterialInputs material, inout PixelParams pixel
     float dielectricSpecularF90 = 0.0;
 #if MATERIAL_HAS_SPECULAR_COLOR_FACTOR == 1
     dielectricSpecularF0 = min(reflectance * material.specularColorFactor, vec3(1.0));
-#endif
+#endif  // MATERIAL_HAS_SPECULAR_COLOR_FACTOR==1
 #if MATERIAL_HAS_SPECULAR_FACTOR==1
     dielectricSpecularF0 *= material.specularFactor;
     dielectricSpecularF90 = material.specularFactor;
-#endif
+#endif  // MATERIAL_HAS_SPECULAR_FACTOR==1
     pixel.f0 = baseColor.rgb * material.metallic + dielectricSpecularF0 * (1.0 - material.metallic);
     pixel.f90 = material.metallic + dielectricSpecularF90 * (1.0 - material.metallic);
-#endif
+#endif  // MATERIAL_HAS_SPECULAR_FACTOR==0 &&
+        // MATERIAL_HAS_SPECULAR_COLOR_FACTOR==0
 #else
     pixel.diffuseColor = baseColor.rgb;
     pixel.f0 = material.sheenColor;
 #if MATERIAL_HAS_SUBSURFACE_COLOR==1
     pixel.subsurfaceColor = material.subsurfaceColor;
-#endif
-#endif
+#endif  // MATERIAL_HAS_SUBSURFACE_COLOR==1
+#endif  // SHADING_MODEL_SPECULAR_GLOSSINESS==1
 
+#if SHADING_MODEL_CLOTH == 0 && SHADING_MODEL_SUBSURFACE == 0
+#if MATERIAL_HAS_REFRACTION == 1
+    const float airIor = 1.0;
+#if MATERIAL_HAS_IOR == 0
+    // [common case] ior is not set in the material, deduce it from F0
+    float materialor = f0ToIor(pixel.f0.g);
+#else
+    float materialor = max(1.0, material.ior);
+#endif                                  // MATERIAL_HAS_IOR==0
+    pixel.etaIR = airIor / materialor;  // air -> material
+    pixel.etaRI = materialor / airIor;  // material -> air
+#if MATERIAL_HAS_TRANSMISSION == 1
+    pixel.transmission = saturate(material.transmission);
+#else
+    pixel.transmission = 1.0;
+#endif  // MATERIAL_HAS_TRANSMISSION==1
+#if MATERIAL_HAS_ABSORPTION == 1
+#if MATERIAL_HAS_THICKNESS == 1 || MATERIAL_HAS_MICRO_THICKNESS == 1
+    pixel.absorption = max(vec3(0.0), material.absorption);
+#else
+    pixel.absorption = saturate(material.absorption);
+#endif
+#else
+    pixel.absorption = vec3(0.0);
+#endif
+#if MATERIAL_HAS_THICKNESS == 1
+    pixel.thickness = max(0.0, material.thickness);
+#endif
+#if MATERIAL_HAS_MICRO_THICKNESS == 1 && \
+    (REFRACTION_TYPE == REFRACTION_TYPE_THIN)
+    pixel.uThickness = max(0.0, material.microThickness);
+#else
+    pixel.uThickness = 0.0;
+#endif  // MATERIAL_HAS_MICRO_THICKNESS==1 && (REFRACTION_TYPE ==
+        // REFRACTION_TYPE_THIN)
+#endif  // MATERIAL_HAS_REFRACTION==1
+#endif  // SHADING_MODEL_CLOTH == 0 && SHADING_MODEL_SUBSURFACE == 0
+#endif  // SHADING_MODEL_UNLIT==0
 }
 
+void getSheenPixelParams(const MaterialInputs material,
+                         inout PixelParams pixel) {
+#if MATERIAL_HAS_SHEEN_COLOR == 1 && SHADING_MODEL_CLOTH == 0 && \
+    SHADING_MODEL_SUBSURFACE == 0
+  pixel.sheenColor = material.sheenColor;
 
+  float sheenPerceptualRoughness = material.sheenRoughness;
+  sheenPerceptualRoughness =
+      clamp(sheenPerceptualRoughness, MIN_PERCEPTUAL_ROUGHNESS, 1.0);
+
+  // #if defined(GEOMETRIC_SPECULAR_AA)
+  //   sheenPerceptualRoughness = normalFiltering(sheenPerceptualRoughness,
+  //                                              getWorldGeometricNormalVector());
+  // #endif
+
+  pixel.sheenPerceptualRoughness = sheenPerceptualRoughness;
+  pixel.sheenRoughness =
+      perceptualRoughnessToRoughness(sheenPerceptualRoughness);
+#endif
+}
+
+void getClearCoatPixelParams(const MaterialInputs material,
+                             inout PixelParams pixel) {
+#if MATERIAL_HAS_CLEAR_COAT == 1
+  pixel.clearCoat = material.clearCoat;
+
+  // Clamp the clear coat roughness to avoid divisions by 0
+  float clearCoatPerceptualRoughness = material.clearCoatRoughness;
+  clearCoatPerceptualRoughness =
+      clamp(clearCoatPerceptualRoughness, MIN_PERCEPTUAL_ROUGHNESS, 1.0);
+
+  // #if defined(GEOMETRIC_SPECULAR_AA)
+  //   clearCoatPerceptualRoughness = normalFiltering(
+  //       clearCoatPerceptualRoughness, getWorldGeometricNormalVector());
+  // #endif
+
+  pixel.clearCoatPerceptualRoughness = clearCoatPerceptualRoughness;
+  pixel.clearCoatRoughness =
+      perceptualRoughnessToRoughness(clearCoatPerceptualRoughness);
+#endif
+}
+
+void getRoughnessPixelParams(const MaterialInputs material,
+                             inout PixelParams pixel) {
+#if SHADING_MODEL_UNLIT == 0
+#if SHADING_MODEL_SPECULAR_GLOSSINESS == 1
+  float perceptualRoughness =
+      computeRoughnessFromGlossiness(material.glossiness);
+#else
+  float perceptualRoughness = material.roughness;
+#endif
+
+  // This is used by the refraction code and must be saved before we apply
+  // specular AA
+  pixel.perceptualRoughnessUnclamped = perceptualRoughness;
+
+  // #if defined(GEOMETRIC_SPECULAR_AA)
+  //   perceptualRoughness =
+  //       normalFiltering(perceptualRoughness,
+  //       getWorldGeometricNormalVector());
+  // #endif
+
+#if MATERIAL_HAS_CLEAR_COAT == 1 && MATERIAL_HAS_CLEAR_COAT_ROUGHNESS == 1
+  // This is a hack but it will do: the base layer must be at least as rough
+  // as the clear coat layer to take into account possible diffusion by the
+  // top layer
+  float basePerceptualRoughness =
+      max(perceptualRoughness, pixel.clearCoatPerceptualRoughness);
+  perceptualRoughness =
+      mix(perceptualRoughness, basePerceptualRoughness, pixel.clearCoat);
+#endif
+
+  // Clamp the roughness to a minimum value to avoid divisions by 0 during
+  // lighting
+  pixel.perceptualRoughness =
+      clamp(perceptualRoughness, MIN_PERCEPTUAL_ROUGHNESS, 1.0);
+  // Remaps the roughness to a perceptually linear roughness (roughness^2)
+  pixel.roughness = perceptualRoughnessToRoughness(pixel.perceptualRoughness);
+#endif  // SHADING_MODEL_UNLIT==0
+}
+
+void getSubsurfacePixelParams(const MaterialInputs material,
+                              inout PixelParams pixel) {
+#if SHADING_MODEL_SUBSURFACE == 1
+  pixel.subsurfacePower = material.subsurfacePower;
+  pixel.subsurfaceColor = material.subsurfaceColor;
+  pixel.thickness = saturate(material.thickness);
+#endif
+}
+
+vec3 PrefilteredDFG_LUT(float lod, float NoV) {
+  // coord = sqrt(linear_roughness), which is the mapping used by cmgen.
+  return texture2D(sampler0_iblDFG, vec2(NoV, lod)).rgb;
+}
+
+//------------------------------------------------------------------------------
+// IBL environment BRDF dispatch
+//------------------------------------------------------------------------------
+
+vec3 prefilteredDFG(float perceptualRoughness, float NoV) {
+  // PrefilteredDFG_LUT() takes a LOD, which is sqrt(roughness) =
+  // perceptualRoughness
+  return PrefilteredDFG_LUT(perceptualRoughness, NoV);
+}
+
+void getEnergyCompensationPixelParams(inout PixelParams pixel) {
+  // Pre-filtered DFG term used for image-based lighting
+  pixel.dfg = prefilteredDFG(pixel.perceptualRoughness, shading_NoV);
+
+#if SHADING_MODEL_CLOTH == 0
+  // Energy compensation for multiple scattering in a microfacet model
+  // See "Multiple-Scattering Microfacet BSDFs with the Smith Model"
+  pixel.energyCompensation = 1.0 + pixel.f0 * (1.0 / pixel.dfg.y - 1.0);
+#else
+  pixel.energyCompensation = vec3(1.0);
+#endif
+
+#if SHADING_MODEL_CLOTH == 0
+#if MATERIAL_HAS_SHEEN_COLOR == 1
+  pixel.sheenDFG =
+      prefilteredDFG(pixel.sheenPerceptualRoughness, shading_NoV).z;
+  pixel.sheenScaling = 1.0 - max3(pixel.sheenColor) * pixel.sheenDFG;
+#endif
+#endif
+}
+
+void getAnisotropyPixelParams(const MaterialInputs material,
+                              inout PixelParams pixel) {
+#if MATERIAL_HAS_ANISOTROPY == 1
+//   vec3 direction = material.anisotropyDirection;
+//   pixel.anisotropy = material.anisotropy;
+//   pixel.anisotropicT = normalize(shading_tangentToWorld * direction);
+//   pixel.anisotropicB = normalize(cross(Normal, pixel.anisotropicT));
+#endif
+}
 
 void getPixelParams(const MaterialInputs material, out PixelParams pixel) {
     getSpecularPixelParams(material, pixel);
     getCommonPixelParams(material, pixel);
-    // getSheenPixelParams(material, pixel);
-    // getClearCoatPixelParams(material, pixel);
-    // getRoughnessPixelParams(material, pixel);
-    // getSubsurfacePixelParams(material, pixel);
-    // getAnisotropyPixelParams(material, pixel);
-    // getEnergyCompensationPixelParams(pixel);
+    getSheenPixelParams(material, pixel);
+    getClearCoatPixelParams(material, pixel);
+    getRoughnessPixelParams(material, pixel);
+    getSubsurfacePixelParams(material, pixel);
+    // TODO: tangent vector loading is not implemented yet
+    //  getAnisotropyPixelParams(material, pixel);
+    getEnergyCompensationPixelParams(pixel);
 }
 
-vec4 avaluateLights(MaterialInputs material){
-    PixelParams pixel;
-    getPixelParams(material,pixel);
+vec4 evaluateLights(MaterialInputs material) {
+  PixelParams pixel;
+  getPixelParams(material, pixel);
 
-    return vec4(1.0);
+  return vec4(1.0);
 }
 
-void main(){
+void prepareMaterial() {
+  vec3 viewDir = normalize(cameraPos - FragPos);
+  shading_NoV = clampNoV(dot(Normal, viewDir));
+  shading_reflected = reflect(-viewDir, Normal);
+}
 
-    MaterialInputs inputs;
-    initMaterial(inputs);
-    vec3 listDir = normalize(vec3(1.0,1.0,1.0));
-    
-    FragColor = vec4(vec3(FragPos.xyz),1.0);
-    FragColor = evaluateMaterial(inputs);
-    // FragColor = vec4(1.0);
+void main() {
+  MaterialInputs inputs;
+  initMaterial(inputs);
+  prepareMaterial();
+
+  vec3 listDir = normalize(vec3(1.0, 1.0, 1.0));
+
+  FragColor = vec4(vec3(FragPos.xyz), 1.0);
+  // FragColor = evaluateMaterial(inputs);
+  FragColor.xyz = inputs.normal;
 }
