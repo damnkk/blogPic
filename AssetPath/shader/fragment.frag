@@ -3,13 +3,14 @@
 #define REFRACTION_TYPE_THIN                           0
 #define REFRACTION_TYPE_SOLID                          1
 
+#define REFRACTION_TYPE                                 REFRACTION_TYPE_SOLID
 #define SHADING_MODEL_UNLIT                             0
 #define SHADING_MODEL_SPECULAR_GLOSSINESS               0   
 #define SHADING_MODEL_CLOTH                             0            
 #define SHADING_MODEL_SUBSURFACE                        0
 #define MATERIAL_HAS_REFRACTION                         0
+#define MATERIAL_HAS_REFLECTANCE                        0
 #define MATERIAL_HAS_SUBSURFACE_COLOR                   0
-#define REFRACTION_TYPE                                 REFRACTION_TYPE_SOLID
 #define MATERIAL_HAS_NORMAL                             1
 #define MATERIAL_HAS_BENT_NORMAL                        0
 #define MATERIAL_HAS_CLEAR_COAT                         0
@@ -25,6 +26,11 @@
 #define MATERIAL_HAS_SHEEN_COLOR                        0
 #define MATERIAL_HAS_ANISOTROPY                         0
 
+#define MIN_PERCEPTUAL_ROUGHNESS 0.089
+#define MIN_ROUGHNESS            0.007921
+#define saturate(x)        clamp(x, 0.0, 1.0)
+
+#define MIN_N_DOT_V 1e-4
 
 
 in vec3 FragPos;
@@ -32,6 +38,94 @@ in vec3 Normal;
 in vec2 TexCoords;
 out vec4 FragColor;
 uniform float exposure;
+
+float sq(float x) {
+    return x * x;
+}
+
+float max3(const vec3 v) {
+    return max(v.x, max(v.y, v.z));
+}
+
+float vmax(const vec2 v) {
+    return max(v.x, v.y);
+}
+
+float vmax(const vec3 v) {
+    return max(v.x, max(v.y, v.z));
+}
+
+float vmax(const vec4 v) {
+    return max(max(v.x, v.y), max(v.y, v.z));
+}
+
+/**
+ * Returns the minimum component of the specified vector.
+ *
+ * @public-api
+ */
+float min3(const vec3 v) {
+    return min(v.x, min(v.y, v.z));
+}
+
+float vmin(const vec2 v) {
+    return min(v.x, v.y);
+}
+
+float vmin(const vec3 v) {
+    return min(v.x, min(v.y, v.z));
+}
+
+float vmin(const vec4 v) {
+    return min(min(v.x, v.y), min(v.y, v.z));
+}
+
+float clampNoV(float NoV) {
+    // Neubelt and Pettineo 2013, "Crafting a Next-gen Material Pipeline for The Order: 1886"
+    return max(NoV, MIN_N_DOT_V);
+}
+
+vec3 computeDiffuseColor(const vec4 baseColor, float metallic) {
+    return baseColor.rgb * (1.0 - metallic);
+}
+
+vec3 computeF0(const vec4 baseColor, float metallic, float reflectance) {
+    return baseColor.rgb * metallic + (reflectance * (1.0 - metallic));
+}
+
+float computeDielectricF0(float reflectance) {
+    return 0.16 * reflectance * reflectance;
+}
+
+float computeMetallicFromSpecularColor(const vec3 specularColor) {
+    return max3(specularColor);
+}
+
+float computeRoughnessFromGlossiness(float glossiness) {
+    return 1.0 - glossiness;
+}
+
+float perceptualRoughnessToRoughness(float perceptualRoughness) {
+    return perceptualRoughness * perceptualRoughness;
+}
+
+float roughnessToPerceptualRoughness(float roughness) {
+    return sqrt(roughness);
+}
+
+float iorToF0(float transmittedIor, float incidentIor) {
+    return sq((transmittedIor - incidentIor) / (transmittedIor + incidentIor));
+}
+
+float f0ToIor(float f0) {
+    float r = sqrt(f0);
+    return (1.0 + r) / (1.0 - r);
+}
+
+vec3 f0ClearCoatToSurface(const vec3 f0) {
+
+    return saturate(f0 * (f0 * (0.941892 - 0.263008 * f0) + 0.346479) - 0.0285998);
+}
 
 struct MaterialInputs {
     vec4  baseColor;
@@ -302,9 +396,50 @@ void getSpecularPixelParams(const MaterialInputs material, inout PixelParams pix
 #endif
 }
 
+void getCommonPixelParams(const MaterialInputs material, inout PixelParams pixel) {
+    vec4 baseColor = material.baseColor;
+#if SHADING_MODEL_SPECULAR_GLOSSINESS==1
+    vec3 specularColor = material.specularColor;
+    float metallic = computeMetallicFromSpecularColor(specularColor);
+    pixel.diffuseColor = computeDiffuseColor(baseColor, metallic);
+    pixel.f0 = specularColor;
+#elif SHADING_MODEL_CLOTH==0
+    pixel.diffuseColor = computeDiffuseColor(baseColor, material.metallic);
+#if SHADING_MODEL_SUBSURFACE==0&&(MATERIAL_HAS_REFLECTANCE==0&&MATERIAL_HAS_IOR==1)
+    float reflectance = iorToF0(max(1.0, material.ior), 1.0);
+#else
+    float reflectance = computeDielectricF0(material.reflectance);
+#endif 
+#if MATERIAL_HAS_SPECULAR_FACTOR==0 && MATERIAL_HAS_SPECULAR_COLOR_FACTOR==0
+    pixel.f0 = computeF0(baseColor, material.metallic, reflectance);
+#else
+    vec3 dielectricSpecularF0 = vec3(0.0);
+    float dielectricSpecularF90 = 0.0;
+#if MATERIAL_HAS_SPECULAR_COLOR_FACTOR == 1
+    dielectricSpecularF0 = min(reflectance * material.specularColorFactor, vec3(1.0));
+#endif
+#if MATERIAL_HAS_SPECULAR_FACTOR==1
+    dielectricSpecularF0 *= material.specularFactor;
+    dielectricSpecularF90 = material.specularFactor;
+#endif
+    pixel.f0 = baseColor.rgb * material.metallic + dielectricSpecularF0 * (1.0 - material.metallic);
+    pixel.f90 = material.metallic + dielectricSpecularF90 * (1.0 - material.metallic);
+#endif
+#else
+    pixel.diffuseColor = baseColor.rgb;
+    pixel.f0 = material.sheenColor;
+#if MATERIAL_HAS_SUBSURFACE_COLOR==1
+    pixel.subsurfaceColor = material.subsurfaceColor;
+#endif
+#endif
+
+}
+
+
+
 void getPixelParams(const MaterialInputs material, out PixelParams pixel) {
     getSpecularPixelParams(material, pixel);
-    // getCommonPixelParams(material, pixel);
+    getCommonPixelParams(material, pixel);
     // getSheenPixelParams(material, pixel);
     // getClearCoatPixelParams(material, pixel);
     // getRoughnessPixelParams(material, pixel);
