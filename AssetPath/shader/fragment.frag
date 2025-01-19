@@ -10,6 +10,8 @@
 #define SHADING_MODEL_SUBSURFACE                        0
 #define MATERIAL_HAS_REFRACTION                         0
 #define MATERIAL_HAS_REFLECTANCE                        0
+// screen-space reflections
+#define MATERIAL_HAS_REFLECTIONS 1
 #define MATERIAL_HAS_SUBSURFACE_COLOR                   0
 #define MATERIAL_HAS_NORMAL                             1
 #define MATERIAL_HAS_BENT_NORMAL 1
@@ -25,6 +27,7 @@
 #define MATERIAL_HAS_EMISSIVE                           1
 #define MATERIAL_HAS_SHEEN_COLOR                        0
 #define MATERIAL_HAS_ANISOTROPY                         0
+#define BLEND_MODE_OPAQUE 1
 
 #define MIN_PERCEPTUAL_ROUGHNESS 0.089
 #define MIN_ROUGHNESS            0.007921
@@ -41,8 +44,26 @@ vec3 shading_reflected;  // reflection of view about normal
 float shading_NoV;
 uniform float exposure;
 uniform vec3 cameraPos;
+uniform mat4 view;
+uniform mat4 projection;
 uniform sampler2D sampler0_iblDFG;
+uniform sampler2D sampler0_ssr;
+// frame uniform
+float ssrDistance = 20.0;
+float refractionLodOffset = 6.87707;
+// end frame uniform
 
+vec2 shading_normalizedViewportCoord;
+
+struct SSAOInterpolationCache {
+  highp vec4 weights;
+#if BLEND_MODE_OPAQUE == 1 || BLEND_MODE_MASKED == 1 || \
+    MATERIAL_HAS_REFLECTIONS == 1
+  highp vec2 uv;
+#endif
+};
+
+// math functions
 float sq(float x) {
     return x * x;
 }
@@ -61,6 +82,10 @@ float vmax(const vec3 v) {
 
 float vmax(const vec4 v) {
     return max(max(v.x, v.y), max(v.y, v.z));
+}
+
+vec4 mulMat4x4Float3(const highp mat4 m, const highp vec3 v) {
+  return v.x * m[0] + (v.y * m[1] + (v.z * m[2] + m[3]));
 }
 
 /**
@@ -627,10 +652,24 @@ void getPixelParams(const MaterialInputs material, out PixelParams pixel) {
     getEnergyCompensationPixelParams(pixel);
 }
 
+void evaluateIBL(const MaterialInputs mat, const PixelParams pixel,
+                 inout vec3 color) {
+  vec3 Fr = vec3(0.0);
+  SSAOInterpolationCache interpolationCache;
+#if BLEND_MODE_OPAQUE == 1 || MATERIAL_HAS_REFLECTIONS == 1
+  interpolationCache.uv = shading_normalizedViewportCoord;
+#endif  // BLEND_MODE_OPAQUE==1|| MATERIAL_HAS_REFLECTIONS==1
+
+#if MATERIAL_HAS_REFLECTIONS == 1
+  vec4 ssrFr = vec4(0.0);
+#endif  // MATERIAL_HAS_REFLECTIONS==1
+}
+
 vec4 evaluateLights(MaterialInputs material) {
   PixelParams pixel;
   getPixelParams(material, pixel);
-
+  vec3 color = vec3(0.0);
+  evaluateIBL(material, pixel, color);
   return vec4(1.0);
 }
 
@@ -638,6 +677,9 @@ void prepareMaterial() {
   vec3 viewDir = normalize(cameraPos - FragPos);
   shading_NoV = clampNoV(dot(Normal, viewDir));
   shading_reflected = reflect(-viewDir, Normal);
+  vec4 vertex_position = projection * view * vec4(FragPos, 1.0);
+  shading_normalizedViewportCoord =
+      vertex_position.xy * (0.5 / vertex_position.w) + 0.5;
 }
 
 void main() {

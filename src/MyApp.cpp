@@ -119,7 +119,7 @@ void MyApp::setup() {
   mainCamera.setEyePoint(cinder::vec3(0.0, 0.0, 2.0));
   mainCamera.setNearClip(0.1);
   mainCamera.setFarClip(1000000.0);
-  this->addAssetDirectory(u8"./AssetPath/shader/");
+  this->addAssetDirectory(u8"./AssetPath/");
   tinygltf::Model model;
   drawableList = LoadGltfModel("./DamagedHelmet/DamagedHelmet.gltf");
   pipelines.resize((int)PipelineType::_count);
@@ -127,22 +127,29 @@ void MyApp::setup() {
 
     pipelines[PipelineType::Pip_lit] = cinder::gl::GlslProg::create(
         cinder::gl::GlslProg::Format()
-            .vertex(cinder::app::loadAsset("vertex.vert"))
-            .fragment(cinder::app::loadAsset("fragment.frag")));
+            .vertex(cinder::app::loadAsset("shader/vertex.vert"))
+            .fragment(cinder::app::loadAsset("shader/fragment.frag")));
   } catch (...) {
     CI_LOG_E("Failed to compile updated shaders");
 
     pipelines[PipelineType::Pip_lit] = nullptr;
   }
 
-  cinder::gl::enableDepthRead();
-  cinder::gl::enableDepthWrite();
+  auto skyboxShader = cinder::gl::GlslProg::create(
+      cinder::gl::GlslProg::Format()
+          .vertex(cinder::app::loadAsset("shader/skybox.vert"))
+          .fragment(cinder::app::loadAsset("shader/skybox.frag")));
+  _skybox._batch =
+      cinder::gl::Batch::create(cinder::geom::Cube(), skyboxShader);
+  _skybox._envTextures.push_back(Texture());
+  _skybox._envTextures.back().generate().loadFromPath(
+      "./AssetPath/empty_play_room_1k.hdr");
 }
 
 float rotate = 0.0;
-
+static float pitch = 0.0f;
+static float yaw = 0.0f;
 void MyApp::update() {
-
   // CI_LOG_I(this->getAverageFps());
   static auto startTime = std::chrono::steady_clock::now();
   auto now = std::chrono::steady_clock::now();
@@ -150,15 +157,25 @@ void MyApp::update() {
   float angle = elapsed * 0.1f;
   cinder::mat4 rotateMat =
       glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0, 1, 0));
+  if (_skybox._batch->getGlslProg()) {
+    glm::mat4 translationMat =
+        glm::translate(glm::mat4(1.0f), mainCamera.getEyePoint());
+    _skybox._batch->getGlslProg()->uniform("model", translationMat);
+    _skybox._batch->getGlslProg()->uniform("view", mainCamera.getViewMatrix());
+    _skybox._batch->getGlslProg()->uniform("projection",
+                                           mainCamera.getProjectionMatrix());
+    _skybox._batch->getGlslProg()->uniform("cameraPos",
+                                           mainCamera.getEyePoint());
+  }
   if (pipelines[PipelineType::Pip_lit]) {
-
     this->pipelines[PipelineType::Pip_lit]->uniform("model", rotateMat);
     this->pipelines[PipelineType::Pip_lit]->uniform("view",
                                                     mainCamera.getViewMatrix());
     this->pipelines[PipelineType::Pip_lit]->uniform(
         "projection", mainCamera.getProjectionMatrix());
+    this->pipelines[PipelineType::Pip_lit]->uniform("cameraPos",
+                                                    mainCamera.getEyePoint());
   }
-
   {
     static std::filesystem::file_time_type lastVertWrite;
     static std::filesystem::file_time_type lastFragWrite;
@@ -174,8 +191,8 @@ void MyApp::update() {
           auto start = std::chrono::high_resolution_clock::now();
           auto newProg = cinder::gl::GlslProg::create(
               cinder::gl::GlslProg::Format()
-                  .vertex(cinder::app::loadAsset("vertex.vert"))
-                  .fragment(cinder::app::loadAsset("fragment.frag")));
+                  .vertex(cinder::app::loadAsset("shader/vertex.vert"))
+                  .fragment(cinder::app::loadAsset("shader/fragment.frag")));
           auto end = std::chrono::high_resolution_clock::now();
           CI_LOG_I("Compile time: "
                    << std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -192,13 +209,45 @@ void MyApp::update() {
       }
     }
   }
+  {
+
+    auto direction = mainCamera.getViewDirection();
+
+    auto initialDirection = mainCamera.getViewDirection();
+    glm::vec3 right =
+        glm::normalize(glm::cross(initialDirection, glm::vec3(0, 1, 0)));
+    glm::vec3 up = glm::normalize(glm::cross(right, initialDirection));
+
+    glm::mat4 rotation =
+        glm::rotate(glm::mat4(1.0f), glm::radians(pitch), right) *
+        glm::rotate(glm::mat4(1.0f), glm::radians(yaw), up);
+
+    glm::vec3 newDirection =
+        glm::vec3(rotation * glm::vec4(initialDirection, 0.0f));
+    mainCamera.lookAt(mainCamera.getEyePoint() + newDirection);
+    CI_LOG_I("direction.x: " << direction.x << " direction.y: " << direction.y
+                             << " direction.z: " << direction.z);
+    CI_LOG_I("pitch: " << pitch << " yaw: " << yaw);
+    pitch = 0.0f;
+    yaw = 0.0f;
+  }
 }
 
 void MyApp::draw() {
   // cinder::gl::clear();
   cinder::gl::clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  {
+    cinder::gl::disableDepthWrite();
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, _skybox._envTextures[0].getID());
+    _skybox._envTextures[0].bind(0);
+    _skybox._batch->getGlslProg()->uniform("envv", 0);
+    _skybox._batch->draw();
+  }
+  cinder::gl::enableDepthRead();
+  cinder::gl::enableDepthWrite();
   if (pipelines[PipelineType::Pip_lit]) {
-
+    cinder::gl::cullFace(GL_BACK);
     cinder::gl::clearColor(cinder::ColorA(1.0f, 1.0f, 0.0f, 1.0f));
     for (auto &mesh : drawableList) {
       mesh._vao->bind();
@@ -252,6 +301,21 @@ void MyApp::keyDown(cinder::app::KeyEvent event) {
     if (newEyePoint != this->mainCamera.getEyePoint()) {
       this->mainCamera.setEyePoint(newEyePoint);
     }
+  }
+
+  if (event.getCode() == cinder::app::KeyEvent::KEY_UP) {
+    pitch += 8.0f;
+    pitch = std::min(pitch, 89.0f);
+  }
+  if (event.getCode() == cinder::app::KeyEvent::KEY_DOWN) {
+    pitch -= 8.0f;
+    pitch = std::max(pitch, -89.0f);
+  }
+  if (event.getCode() == cinder::app::KeyEvent::KEY_LEFT) {
+    yaw += 8.0f;
+  }
+  if (event.getCode() == cinder::app::KeyEvent::KEY_RIGHT) {
+    yaw -= 8.0f;
   }
 }
 
