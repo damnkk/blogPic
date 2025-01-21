@@ -41,12 +41,15 @@ in vec3 Normal;
 in vec2 TexCoords;
 out vec4 FragColor;
 vec3 shading_reflected;  // reflection of view about normal
+vec3 shading_normal;
+vec3 shading_view;
 float shading_NoV;
 uniform float exposure;
 uniform vec3 cameraPos;
 uniform mat4 view;
 uniform mat4 projection;
 uniform sampler2D sampler0_iblDFG;
+uniform sampler2D sampler0_iblSpecular;
 uniform sampler2D sampler0_ssr;
 // frame uniform
 float ssrDistance = 20.0;
@@ -400,10 +403,75 @@ struct PixelParams {
 #endif
 };
 
-vec4 evaluateMaterial(MaterialInputs material) {
-    vec4 color = material.baseColor;
-    return color;
+//------------------------------------------------------------------------------
+// IBL specular
+//------------------------------------------------------------------------------
+
+vec3 specularDFG(const PixelParams pixel){
+#if SHADING_MODEL_CLOTH==1
+    return pixel.f0 * pixel.dfg.z;
+#else
+#if MATERIAL_HAS_SPECULAR_COLOR_FACTOR==1 ||MATERIAL_HAS_SPECULAR_FACTOR==1
+    return mix(pixel.dfg.xxx, pixel.dfg.yyy, pixel.f0) * pixel.specular;
+#else
+    return mix(pixel.dfg.xxx, pixel.dfg.yyy, pixel.f0);
+#endif
+#endif
 }
+
+
+float perceptualRoughnessToLod(float perceptualRoughness) {
+    // The mapping below is a quadratic fit for log2(perceptualRoughness)+iblRoughnessOneLevel when
+    // iblRoughnessOneLevel is 4. We found empirically that this mapping works very well for
+    // a 256 cubemap with 5 levels used. But also scales well for other iblRoughnessOneLevel values.
+    // return frameUniforms.iblRoughnessOneLevel * perceptualRoughness * (2.0 - perceptualRoughness);
+    return 1.2;
+}
+
+vec3 prefilteredRadiance(const vec3 r, float perceptualRoughness) {
+    // float lod = perceptualRoughnessToLod(perceptualRoughness);
+    // return textureLod(sampler0_iblSpecular, r, lod).xyz;
+    return vec3(0.5);
+}
+
+vec3 prefilteredRadiance(const vec3 r, float roughness, float offset) {
+    // float lod = frameUniforms.iblRoughnessOneLevel * roughness;
+    // return textureLod(sampler0_iblSpecular, r, lod + offset).xyz;
+    return vec3(0.5);
+}
+
+
+vec3 getSpecularDominantDirection(const vec3 n, const vec3 r, float roughness) {
+    return mix(r, n, roughness * roughness);
+}
+
+vec3 getReflectedVector(const PixelParams pixel, const vec3 v, const vec3 n) {
+#if MATERIAL_HAS_ANISOTROPY==1
+    vec3  anisotropyDirection = pixel.anisotropy >= 0.0 ? pixel.anisotropicB : pixel.anisotropicT;
+    vec3  anisotropicTangent  = cross(anisotropyDirection, v);
+    vec3  anisotropicNormal   = cross(anisotropicTangent, anisotropyDirection);
+    float bendFactor          = abs(pixel.anisotropy) * saturate(5.0 * pixel.perceptualRoughness);
+    vec3  bentNormal          = normalize(mix(n, anisotropicNormal, bendFactor));
+
+    vec3 r = reflect(-v, bentNormal);
+#else
+    vec3 r = reflect(-v, n);
+#endif
+    return r;
+}
+
+vec3 getReflectedVector(const PixelParams pixel, const vec3 n) {
+#if MATERIAL_HAS_ANISOTROPY==1
+    vec3 r = getReflectedVector(pixel, shading_view, n);
+#else
+    vec3 r = shading_reflected;
+#endif
+    return getSpecularDominantDirection(n, r, pixel.roughness);
+}
+
+
+
+
 
 
 void addEmissive(const MaterialInputs material, inout vec4 color) {
@@ -652,6 +720,9 @@ void getPixelParams(const MaterialInputs material, out PixelParams pixel) {
     getEnergyCompensationPixelParams(pixel);
 }
 
+
+
+
 void evaluateIBL(const MaterialInputs mat, const PixelParams pixel,
                  inout vec3 color) {
   vec3 Fr = vec3(0.0);
@@ -663,6 +734,13 @@ void evaluateIBL(const MaterialInputs mat, const PixelParams pixel,
 #if MATERIAL_HAS_REFLECTIONS == 1
   vec4 ssrFr = vec4(0.0);
 #endif  // MATERIAL_HAS_REFLECTIONS==1
+  vec3 E = specularDFG(pixel);
+  if(ssrFr.a <1.0){
+    vec3 r = getReflectedVector(pixel, shading_normal);
+    Fr = E * prefilteredRadiance(r,pixel.perceptualRoughness);
+  }
+
+  color.rgb += Fr;
 }
 
 vec4 evaluateLights(MaterialInputs material) {
@@ -670,13 +748,21 @@ vec4 evaluateLights(MaterialInputs material) {
   getPixelParams(material, pixel);
   vec3 color = vec3(0.0);
   evaluateIBL(material, pixel, color);
-  return vec4(1.0);
+  return vec4(color,1.0);
+}
+
+vec4 evaluateMaterial(MaterialInputs material) {
+    vec4 color = evaluateLights(material);
+    // evaluateLights(material);
+    return color;
 }
 
 void prepareMaterial() {
   vec3 viewDir = normalize(cameraPos - FragPos);
   shading_NoV = clampNoV(dot(Normal, viewDir));
   shading_reflected = reflect(-viewDir, Normal);
+  shading_normal = Normal;
+  shading_view = (view*vec4(FragPos,1.0)).xyz;
   vec4 vertex_position = projection * view * vec4(FragPos, 1.0);
   shading_normalizedViewportCoord =
       vertex_position.xy * (0.5 / vertex_position.w) + 0.5;
@@ -690,6 +776,6 @@ void main() {
   vec3 listDir = normalize(vec3(1.0, 1.0, 1.0));
 
   FragColor = vec4(vec3(FragPos.xyz), 1.0);
-  // FragColor = evaluateMaterial(inputs);
-  FragColor.xyz = inputs.normal;
+  FragColor = evaluateMaterial(inputs);
+//   FragColor.xyz = inputs.normal;
 }
